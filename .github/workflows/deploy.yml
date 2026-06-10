@@ -16,11 +16,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/actions/setup-node@v4
         with:
-          node-size: 20
+          node-version: 20 # 💡 Corrigido aqui de node-size para node-version
 
       - name: Instalar Dependências e Gerar Build
+        env:
+          # 💡 Injeta os segredos salvos no painel do GitHub dentro do build do Vite
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           npm install
           npm run build
