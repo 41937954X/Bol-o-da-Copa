@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 
 // ==========================================
-// SUBCOMPONENTE: CARD DE JOGO DUPLO (INTACTO)
+// SUBCOMPONENTE: CARD DE JOGO DUPLO (OTIMIZADO)
 // ==========================================
 function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSalvarPalpite, onSalvarResultadoReal }) {
   const [palpiteCasa, setPalpiteCasa] = useState('');
@@ -43,7 +43,7 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
   const inputsTravados = visaoApenasLeitura || (jaTemPalpite && !isAdmin);
 
   return (
-    <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4 hover:border-slate-700 transition">
+    <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-4 hover:border-slate-700 transition">
       <div className="flex justify-between items-center border-b border-slate-800/60 pb-2">
         <span className="bg-slate-800 px-2.5 py-1 rounded-md text-[10px] font-black text-yellow-500 uppercase tracking-wider">
           Grupo {jogo.grupo} - Rodada {jogo.rodada}
@@ -53,13 +53,16 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
         </span>
       </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 justify-end flex-1 text-right">
-          <span className="font-bold text-sm tracking-wide truncate">{jogo.time_casa?.nome}</span>
-          <img src={jogo.time_casa?.url_escudo} alt="" className="w-10 h-7 object-cover rounded shadow border border-slate-700 flex-shrink-0" />
+      {/* 💡 OTIMIZADO: Quebra linha (flex-wrap) se a tela for muito estreita para não amassar os nomes */}
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 sm:gap-4">
+        {/* Mandante */}
+        <div className="flex items-center gap-2 sm:gap-3 justify-end flex-1 text-right min-w-[90px] sm:min-w-0">
+          <span className="font-bold text-xs sm:text-sm tracking-wide truncate">{jogo.time_casa?.nome}</span>
+          <img src={jogo.time_casa?.url_escudo} alt="" className="w-8 h-5 sm:w-10 sm:h-7 object-cover rounded shadow border border-slate-700 flex-shrink-0" />
         </div>
 
-        <div className="flex flex-col items-center gap-1 bg-slate-950/40 p-2 rounded-xl border border-slate-800 min-w-[110px]">
+        {/* CONTROLE DO PLACAR REAL */}
+        <div className="flex flex-col items-center gap-1 bg-slate-950/40 p-2 rounded-xl border border-slate-800 min-w-[100px] sm:min-w-[110px] mx-auto sm:mx-0">
           <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Placar Real</span>
           <div className="flex items-center gap-1.5">
             <input 
@@ -67,7 +70,7 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
               disabled={!isAdmin}
               value={realCasa}
               onChange={(e) => setRealCasa(e.target.value)}
-              className="w-10 h-10 rounded-lg bg-slate-900 border border-slate-700 text-center font-black text-base text-slate-200 focus:outline-none"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-900 border border-slate-700 text-center font-black text-sm sm:text-base text-slate-200 focus:outline-none"
               placeholder="-"
             />
             <span className="text-xs font-black text-slate-600">x</span>
@@ -76,7 +79,7 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
               disabled={!isAdmin}
               value={realFora}
               onChange={(e) => setRealFora(e.target.value)}
-              className="w-10 h-10 rounded-lg bg-slate-900 border border-slate-700 text-center font-black text-base text-slate-200 focus:outline-none"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-slate-900 border border-slate-700 text-center font-black text-sm sm:text-base text-slate-200 focus:outline-none"
               placeholder="-"
             />
           </div>
@@ -90,16 +93,18 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
           )}
         </div>
 
-        <div className="flex items-center gap-3 justify-start flex-1 text-left">
-          <img src={jogo.time_fora?.url_escudo} alt="" className="w-10 h-7 object-cover rounded shadow border border-slate-700 flex-shrink-0" />
-          <span className="font-bold text-sm tracking-wide truncate">{jogo.time_fora?.nome}</span>
+        {/* Visitante */}
+        <div className="flex items-center gap-2 sm:gap-3 justify-start flex-1 text-left min-w-[90px] sm:min-w-0">
+          <img src={jogo.time_fora?.url_escudo} alt="" className="w-8 h-5 sm:w-10 sm:h-7 object-cover rounded shadow border border-slate-700 flex-shrink-0" />
+          <span className="font-bold text-xs sm:text-sm tracking-wide truncate">{jogo.time_fora?.nome}</span>
         </div>
       </div>
 
+      {/* FOOTER DO CARD: PALPITE */}
       <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-center gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-slate-400">Palpite do Competidor:</span>
-          <div className="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">
+        <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-3">
+          <span className="text-xs font-bold text-slate-400">Palpite:</span>
+          <div className="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 mx-auto sm:mx-0">
             <img src={jogo.time_casa?.url_escudo} alt="" className="w-5 h-3.5 object-cover rounded-sm border border-slate-700" />
             <input 
               type="number" 
@@ -133,7 +138,7 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
         )}
 
         {jaTemPalpite && !isAdmin && (
-          <span className="text-[11px] text-green-400 font-bold bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-lg">
+          <span className="text-[11px] text-green-400 font-bold bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-lg text-center w-full sm:w-auto">
             ✓ Palpite Registrado
           </span>
         )}
@@ -150,7 +155,7 @@ export default function App() {
   const [loginCelular, setLoginCelular] = useState('');
   const [loginSenha, setLoginSenha] = useState('');
   const [erroLogin, setErroLogin] = useState('');
-  const [loadingLogin, setLoadingLogin] = useState(false); // 💡 Estado corrigido para casar com as funções de atualização abaixo
+  const [loadingLogin, setLoadingLogin] = useState(false);
 
   const [abaAtiva, setAbaAtiva] = useState('visualizacao'); 
   const [jogos, setJogos] = useState([]);
@@ -207,7 +212,6 @@ export default function App() {
     buscarDados();
   }, []);
 
-  // 💡 AJUSTADO: Força o participante selecionado a ficar estritamente nulo se não houver login ativo
   useEffect(() => {
     if (usuarioLogado) {
       if (!isAdmin) {
@@ -220,7 +224,7 @@ export default function App() {
 
   const lidarLogin = async (e) => {
     e.preventDefault();
-    setLoadingLogin(true); // 💡 Corrigido de setLoadingLogin para os estados corretos
+    setLoadingLogin(true);
     setErroLogin('');
 
     const celularLimpo = loginCelular.replace(/\D/g, '');
@@ -357,7 +361,7 @@ export default function App() {
         grupos[g][jogo.time_casa.nome] = { nome: jogo.time_casa.nome, escudo: jogo.time_casa.url_escudo, pts: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
       }
       if (jogo.time_fora && !grupos[g][jogo.time_fora.nome]) {
-        grupos[g][jogo.time_fora.nome] = { nome: jogo.time_fora.nome, escudo: jogo.time_fora.url_escudo, pts: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
+        grupos[g][jogo.time_fora.nome] = { nome: font = jogo.time_fora.nome, escudo: jogo.time_fora.url_escudo, pts: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
       }
 
       if (jogo.placar_casa !== null && jogo.placar_fora !== null) {
@@ -413,7 +417,7 @@ export default function App() {
   if (!usuarioLogado) {
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 font-sans flex flex-col justify-center items-center px-4">
-        <div className="bg-slate-950 border border-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="bg-slate-950 border border-slate-800 p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-md">
           <div className="text-center mb-6">
             <span className="text-4xl">🏆</span>
             <h1 className="text-xl font-black bg-gradient-to-r from-yellow-400 to-green-500 bg-clip-text text-transparent mt-2">
@@ -469,38 +473,39 @@ export default function App() {
   // --- TELA PRINCIPAL ---
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans antialiased pb-12">
-      <header className="border-b border-slate-800 bg-slate-950 sticky top-0 z-50 px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4 shadow-md">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-black bg-gradient-to-r from-yellow-400 to-green-500 bg-clip-text text-transparent">🏆 BOLÃO COPA 2026</h1>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${isAdmin ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
-            {isAdmin ? 'Modo: Administrador' : `Olá, ${usuarioLogado.nome}`}
+      <header className="border-b border-slate-800 bg-slate-950 sticky top-0 z-50 px-4 py-3 flex flex-col lg:flex-row justify-between items-center gap-4 shadow-md">
+        <div className="flex items-center justify-between w-full lg:w-auto gap-3">
+          <h1 className="text-base sm:text-xl font-black bg-gradient-to-r from-yellow-400 to-green-500 bg-clip-text text-transparent whitespace-nowrap">🏆 BOLÃO COPA 2026</h1>
+          <span className={`text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full font-bold border truncate max-w-[150px] sm:max-w-none ${isAdmin ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+            {isAdmin ? 'Modo: Admin' : `Olá, ${usuarioLogado.nome}`}
           </span>
         </div>
 
-        <nav className="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold">
-          <button onClick={() => setAbaAtiva('visualizacao')} className={`px-3 py-1.5 rounded-lg ${abaAtiva === 'visualizacao' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
+        {/* 💡 OTIMIZADO: Impede amassamento das abas em dispositivos móveis menores com rolagem invisível */}
+        <nav className="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold overflow-x-auto w-full lg:w-auto whitespace-nowrap scrollbar-none">
+          <button onClick={() => setAbaAtiva('visualizacao')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'visualizacao' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
             {isAdmin ? '👁️ Ver Palpites' : '📝 Meus Palpites'}
           </button>
-          {isAdmin && <button onClick={() => setAbaAtiva('painel-admin')} className={`px-3 py-1.5 rounded-lg ${abaAtiva === 'painel-admin' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>⚙️ Painel Geral</button>}
-          <button onClick={() => setAbaAtiva('ranking')} className={`px-3 py-1.5 rounded-lg ${abaAtiva === 'ranking' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>📊 Ranking Rodada</button>
-          <button onClick={() => setAbaAtiva('grupos-copa')} className={`px-3 py-1.5 rounded-lg ${abaAtiva === 'grupos-copa' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>🏆 Grupos da Copa</button>
+          {isAdmin && <button onClick={() => setAbaAtiva('painel-admin')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'painel-admin' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>⚙️ Painel Geral</button>}
+          <button onClick={() => setAbaAtiva('ranking')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'ranking' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>📊 Ranking Rodada</button>
+          <button onClick={() => setAbaAtiva('grupos-copa')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'grupos-copa' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>🏆 Grupos da Copa</button>
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between lg:justify-end w-full lg:w-auto gap-2">
           {!isAdmin && (
-            <form onSubmit={verificarPinAdmin} className="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
-              <input type="password" placeholder="PIN Admin" value={inputPin} onChange={(e) => setInputPin(e.target.value)} className="bg-slate-950 px-2 py-1 text-xs font-bold rounded-md w-24 text-center focus:outline-none" />
-              <button type="submit" className="bg-slate-800 text-[10px] font-bold px-2 py-1 rounded-md hover:bg-slate-700">Acessar</button>
+            <form onSubmit={verificarPinAdmin} className="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 w-full sm:w-auto justify-between sm:justify-start">
+              <input type="password" placeholder="PIN Admin" value={inputPin} onChange={(e) => setInputPin(e.target.value)} className="bg-slate-950 px-2 py-1 text-xs font-bold rounded-md w-20 sm:w-24 text-center focus:outline-none" />
+              <button type="submit" className="bg-slate-800 text-[10px] font-bold px-2 py-1 rounded-md hover:bg-slate-700 transition">Acessar</button>
             </form>
           )}
-          <button onClick={handleLogout} className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 text-[10px] font-black px-3 py-1.5 rounded-xl transition">
+          <button onClick={handleLogout} className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 text-[10px] font-black px-3 py-1.5 rounded-xl transition whitespace-nowrap ml-auto sm:ml-0">
             Sair 🚪
           </button>
         </div>
       </header>
 
       {abaAtiva !== 'ranking' && abaAtiva !== 'grupos-copa' && (
-        <div className="bg-slate-950 border-b border-slate-800 py-3 sticky top-[57px] z-40 shadow-sm overflow-x-auto">
+        <div className="bg-slate-950 border-b border-slate-800 py-3 sticky top-[108px] lg:top-[57px] z-40 shadow-sm overflow-x-auto scrollbar-none">
           <div className="max-w-6xl mx-auto px-4 flex gap-2">
             {diasCopa.map(d => (
               <button key={d.data} onClick={() => setDiaSelecionado(d.data)} className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap border ${diaSelecionado === d.data ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-slate-950 border-yellow-400' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>{d.label}</button>
@@ -513,19 +518,23 @@ export default function App() {
 
         {abaAtiva === 'visualizacao' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              {jogosFiltrados.map(j => (
-                <CardJogoDuplo 
-                  key={j.id} 
-                  jogo={j} 
-                  participanteId={participanteSelecionado} 
-                  isAdmin={false} 
-                  visaoApenasLeitura={false}
-                  onSalvarPalpite={lidarSalvarPalpite}
-                />
-              ))}
+            <div className="w-full lg:col-span-2 space-y-4">
+              {jogosFiltrados.length === 0 ? (
+                <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800 text-slate-400 text-xs font-bold">Nenhum jogo agendado para este dia.</div>
+              ) : (
+                jogosFiltrados.map(j => (
+                  <CardJogoDuplo 
+                    key={j.id} 
+                    jogo={j} 
+                    participanteId={participanteSelecionado} 
+                    isAdmin={false} 
+                    visaoApenasLeitura={false}
+                    onSalvarPalpite={lidarSalvarPalpite}
+                  />
+                ))
+              )}
             </div>
-            <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 shadow-xl h-fit">
+            <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 shadow-xl h-fit w-full">
               <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">👤 Competidor Ativo</h3>
               <p className="text-sm font-bold text-yellow-400">{usuarioLogado.nome}</p>
               <p className="text-[11px] text-slate-400 mt-2">Você está autenticado. Suas alterações salvam automaticamente os palpites no seu perfil.</p>
@@ -535,11 +544,15 @@ export default function App() {
 
         {abaAtiva === 'painel-admin' && isAdmin && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              {jogosFiltrados.map(j => <CardJogoDuplo key={j.id} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)}
+            <div className="w-full lg:col-span-2 space-y-4">
+              {jogosFiltrados.length === 0 ? (
+                <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800 text-slate-400 text-xs font-bold">Nenhum jogo agendado para este dia.</div>
+              ) : (
+                jogosFiltrados.map(j => <CardJogoDuplo key={j.id} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)
+              )}
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-4 w-full">
               <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h3 className="text-xs font-black uppercase text-slate-400 mb-2">👤 Modificar Palpites de:</h3>
                 <select value={participanteSelecionado} onChange={(e) => setParticipanteSelecionado(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm font-bold text-slate-200 focus:outline-none">
@@ -556,7 +569,7 @@ export default function App() {
                     const chave = `${rodadaAtual}-${p.id}`;
                     const estaSuspenso = participantesInativosPorRodada[chave];
                     return (
-                      <label key={p.id} className="flex items-center justify-between text-xs font-bold p-1 hover:bg-slate-900 rounded">
+                      <label key={p.id} className="flex items-center justify-between text-xs font-bold p-1 hover:bg-slate-900 rounded cursor-pointer">
                         <span className={estaSuspenso ? 'text-red-400 line-through' : 'text-slate-300'}>{p.nome}</span>
                         <input type="checkbox" checked={!!estaSuspenso} onChange={() => alternarParticipacaoAtiva(p.id, rodadaAtual)} className="accent-red-500 cursor-pointer" />
                       </label>
@@ -570,7 +583,7 @@ export default function App() {
                 <form onSubmit={cadastrarParticipante} className="space-y-2">
                   <input type="text" placeholder="Nome do amigo" value={novoParticipanteNome} onChange={(e) => setNovoParticipanteNome(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-200 focus:outline-none" required />
                   <input type="text" placeholder="Celular (Ex: 12999999999)" value={novoParticipanteCelular} onChange={(e) => setNovoParticipanteCelular(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-200 focus:outline-none" required />
-                  <button type="submit" className="w-full bg-green-500 text-slate-950 font-black py-2 rounded-xl text-xs hover:brightness-110 shadow-md">Adicionar no Banco</button>
+                  <button type="submit" className="w-full bg-green-500 text-slate-950 font-black py-2 rounded-xl text-xs hover:brightness-110 shadow-md transition">Adicionar no Banco</button>
                 </form>
               </div>
 
@@ -591,32 +604,33 @@ export default function App() {
         )}
 
         {abaAtiva === 'ranking' && (
-          <div className="max-w-2xl mx-auto space-y-4">
-            <div className="flex justify-between items-center bg-slate-950 border border-slate-800 p-4 rounded-xl shadow">
-              <h2 className="text-sm font-black uppercase text-slate-300">📊 Filtrar Tabela por Rodada:</h2>
-              <div className="flex gap-1.5">
+          <div className="max-w-2xl mx-auto space-y-4 w-full">
+            <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center bg-slate-950 border border-slate-800 p-4 rounded-xl shadow">
+              <h2 className="text-xs sm:text-sm font-black uppercase text-slate-300">📊 Filtrar Tabela:</h2>
+              <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto scrollbar-none">
                 {[1, 2, 3].map(r => (
-                  <button key={r} onClick={() => setRodadaFiltroRanking(r)} className={`px-4 py-2 rounded-lg text-xs font-bold ${rodadaFiltroRanking === r ? 'bg-yellow-500 text-slate-950' : 'bg-slate-900 border border-slate-800'}`}>Rodada {r}</button>
+                  <button key={r} onClick={() => setRodadaFiltroRanking(r)} className={`px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap ${rodadaFiltroRanking === r ? 'bg-yellow-500 text-slate-950' : 'bg-slate-900 border border-slate-800 text-slate-400'}`}>Rodada {r}</button>
                 ))}
               </div>
             </div>
 
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-              <table className="w-full text-left">
+            {/* 💡 OTIMIZADO: Contêiner de rolagem horizontal segura para a tabela de ranking no celular */}
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-x-auto shadow-2xl w-full">
+              <table className="w-full text-left min-w-[480px]">
                 <thead>
                   <tr className="bg-slate-900 text-slate-400 text-xs font-black uppercase tracking-wider border-b border-slate-800">
-                    <th className="py-4 px-6 text-center w-16">Pos</th>
-                    <th className="py-4 px-6">Participante</th>
-                    <th className="py-4 px-6 text-center w-36">Pontos Obtidos</th>
+                    <th className="py-4 px-4 sm:px-6 text-center w-16">Pos</th>
+                    <th className="py-4 px-4 sm:px-6">Participante</th>
+                    <th className="py-4 px-4 sm:px-6 text-center w-36">Pontos Obtidos</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-900 text-sm font-bold">
+                <tbody className="divide-y divide-slate-900 text-xs sm:text-sm font-bold">
                   {rankingFiltrado.map((p, idx) => (
-                    <tr key={p.id} className={`hover:bg-slate-900/30 ${usuarioLogado?.id === p.id ? 'bg-yellow-500/5' : ''}`}>
-                      <td className="py-4 px-6 text-center">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`}</td>
-                      <td className="py-4 px-6 text-slate-200">{p.nome} {usuarioLogado?.id === p.id && '(Você) ⭐'}</td>
-                      <td className="py-4 px-6 text-center">
-                        <span className={`px-3 py-1 rounded-lg border text-xs ${p.pontos === 'Suspenso/Inativo' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                    <tr key={p.id} className={`hover:bg-slate-900/30 transition ${usuarioLogado?.id === p.id ? 'bg-yellow-500/5' : ''}`}>
+                      <td className="py-4 px-4 sm:px-6 text-center">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`}</td>
+                      <td className="py-4 px-4 sm:px-6 text-slate-200">{p.nome} {usuarioLogado?.id === p.id && '(Você) ⭐'}</td>
+                      <td className="py-4 px-4 sm:px-6 text-center">
+                        <span className={`px-2.5 py-1 rounded-lg border text-[11px] sm:text-xs ${p.pontos === 'Suspenso/Inativo' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
                           {typeof p.pontos === 'number' ? `${p.pontos} pts` : p.pontos}
                         </span>
                       </td>
@@ -631,22 +645,22 @@ export default function App() {
         {abaAtiva === 'grupos-copa' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Object.keys(tabelasCopa).map(letra => (
-              <div key={letra} className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+              <div key={letra} className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-lg w-full">
                 <div className="bg-slate-900/60 border-b border-slate-800 px-4 py-2.5 flex justify-between items-center">
                   <h3 className="font-black text-sm text-yellow-500">GRUPO {letra}</h3>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PTS | SG | GP</span>
                 </div>
                 <div className="p-2 space-y-1.5">
                   {tabelasCopa[letra].map((time, idx) => (
-                    <div key={time.nome} className="flex items-center justify-between text-xs font-bold px-2 py-1.5 hover:bg-slate-900/40 rounded">
-                      <div className="flex items-center gap-2 truncate">
+                    <div key={time.nome} className="flex items-center justify-between text-xs font-bold px-2 py-1.5 hover:bg-slate-900/40 rounded transition">
+                      <div className="flex items-center gap-2 truncate mr-2">
                         <span className="text-[10px] font-mono text-slate-500 w-3">{idx + 1}</span>
                         <img src={time.escudo} alt="" className="w-6 h-4 object-cover rounded shadow-sm border border-slate-800 flex-shrink-0" />
                         <span className="text-slate-200 truncate">{time.nome}</span>
                       </div>
-                      <div className="flex gap-3 font-mono text-slate-300">
+                      <div className="flex gap-3 font-mono text-slate-300 flex-shrink-0">
                         <span className="font-black text-slate-100 w-4 text-right">{time.pts}</span>
-                        <span className="w-4 text-right">{time.sg > 0 ? `+${time.sg}` : time.sg}</span>
+                        <span className="w-5 text-right">{time.sg > 0 ? `+${time.sg}` : time.sg}</span>
                         <span className="w-4 text-right text-slate-500">{time.gp}</span>
                       </div>
                     </div>
