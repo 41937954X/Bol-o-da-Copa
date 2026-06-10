@@ -4,5 +4,5 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/https://github.com/41937954X/Bol-o-da-Copa.git/',
+  base: '/Bol-o-da-Copa/', // 👈 Aqui vai apenas o nome do repositório!
 })
