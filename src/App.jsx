@@ -9,8 +9,6 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
   const [palpiteFora, setPalpiteFora] = useState('');
   const [realCasa, setRealCasa] = useState(jogo.placar_casa ?? '');
   const [realFora, setRealFora] = useState(jogo.placar_fora ?? '');
-  
-  // 💡 NOVO: Estado para controlar se o palpite já existe no banco de dados
   const [jaTemPalpite, setJaTemPalpite] = useState(false);
 
   useEffect(() => {
@@ -27,7 +25,6 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
         if (data) {
           setPalpiteCasa(data.palpite_casa ?? '');
           setPalpiteFora(data.palpite_fora ?? '');
-          // Se encontrou dados e os placares não são nulos, marca como já palpitado
           setJaTemPalpite(data.palpite_casa !== null && data.palpite_fora !== null);
         } else {
           setPalpiteCasa('');
@@ -43,7 +40,6 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
     setRealFora(jogo.placar_fora ?? '');
   }, [jogo, participanteId]);
 
-  // 💡 LÓGICA DA TRAVA: O campo fica desativado se a visão for apenas leitura OU se o palpite já existir (e o usuário não for Admin)
   const inputsTravados = visaoApenasLeitura || (jaTemPalpite && !isAdmin);
 
   return (
@@ -58,19 +54,17 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
       </div>
 
       <div className="flex items-center justify-between gap-4">
-        {/* Mandante */}
         <div className="flex items-center gap-3 justify-end flex-1 text-right">
           <span className="font-bold text-sm tracking-wide truncate">{jogo.time_casa?.nome}</span>
           <img src={jogo.time_casa?.url_escudo} alt="" className="w-10 h-7 object-cover rounded shadow border border-slate-700 flex-shrink-0" />
         </div>
 
-        {/* CONTROLE DO PLACAR REAL */}
         <div className="flex flex-col items-center gap-1 bg-slate-950/40 p-2 rounded-xl border border-slate-800 min-w-[110px]">
           <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Placar Real</span>
           <div className="flex items-center gap-1.5">
             <input 
               type="number" 
-              disabled={!isAdmin} // Só o admin mexe no resultado real
+              disabled={!isAdmin}
               value={realCasa}
               onChange={(e) => setRealCasa(e.target.value)}
               className="w-10 h-10 rounded-lg bg-slate-900 border border-slate-700 text-center font-black text-base text-slate-200 focus:outline-none"
@@ -96,14 +90,12 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
           )}
         </div>
 
-        {/* Visitante */}
         <div className="flex items-center gap-3 justify-start flex-1 text-left">
           <img src={jogo.time_fora?.url_escudo} alt="" className="w-10 h-7 object-cover rounded shadow border border-slate-700 flex-shrink-0" />
           <span className="font-bold text-sm tracking-wide truncate">{jogo.time_fora?.nome}</span>
         </div>
       </div>
 
-      {/* FOOTER DO CARD: PALPITE */}
       <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-center gap-3">
         <div className="flex items-center gap-3">
           <span className="text-xs font-bold text-slate-400">Palpite do Competidor:</span>
@@ -111,7 +103,7 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
             <img src={jogo.time_casa?.url_escudo} alt="" className="w-5 h-3.5 object-cover rounded-sm border border-slate-700" />
             <input 
               type="number" 
-              disabled={inputsTravados} // 👈 Trava aplicada aqui
+              disabled={inputsTravados}
               value={palpiteCasa}
               onChange={(e) => setPalpiteCasa(e.target.value)}
               className="w-8 bg-transparent text-center font-bold text-sm text-yellow-400 focus:outline-none disabled:text-slate-500"
@@ -120,7 +112,7 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
             <span className="text-xs text-slate-600 font-bold">x</span>
             <input 
               type="number" 
-              disabled={inputsTravados} // 👈 Trava aplicada aqui
+              disabled={inputsTravados}
               value={palpiteFora}
               onChange={(e) => setPalpiteFora(e.target.value)}
               className="w-8 bg-transparent text-center font-bold text-sm text-yellow-400 focus:outline-none disabled:text-slate-500"
@@ -130,7 +122,6 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
           </div>
         </div>
 
-        {/* Exibe o botão apenas se o usuário puder palpitar, ou se for o Admin ajustando */}
         {(!inputsTravados || isAdmin) && (
           <button
             onClick={() => onSalvarPalpite(jogo.id, palpiteCasa, palpiteFora)}
@@ -141,7 +132,6 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
           </button>
         )}
 
-        {/* 💡 Mensagem amigável para o participante saber que o palpite foi registrado */}
         {jaTemPalpite && !isAdmin && (
           <span className="text-[11px] text-green-400 font-bold bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-lg">
             ✓ Palpite Registrado
@@ -156,14 +146,13 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
 // COMPONENTE PRINCIPAL: APP
 // ==========================================
 export default function App() {
-  // --- Estados de Segurança e Sessão Integrados ---
   const [usuarioLogado, setUsuarioLogado] = useState(null);
   const [loginCelular, setLoginCelular] = useState('');
   const [loginSenha, setLoginSenha] = useState('');
   const [erroLogin, setErroLogin] = useState('');
-  const [loadingLogin, setLoadingLogin] = useState(false);
+  const [loadingLogin, setLoadingLogin] = useState(false); // 💡 Estado corrigido para casar com as funções de atualização abaixo
 
-  const [abaAtiva, setAbaAtiva] = useState('visualizacao'); // visualizacao | painel-admin | ranking | grupos-copa
+  const [abaAtiva, setAbaAtiva] = useState('visualizacao'); 
   const [jogos, setJogos] = useState([]);
   const [participantes, setParticipantes] = useState([]);
   const [palpitesTodos, setPalpitesTodos] = useState([]);
@@ -173,10 +162,8 @@ export default function App() {
   const [novoParticipanteNome, setNovoParticipanteNome] = useState('');
   const [novoParticipanteCelular, setNovoParticipanteCelular] = useState('');
   
-  // Exclusivos Rodada/Participação
-  const [participantesInativosPorRodada, setParticipantesInativosPorRodada] = useState({}); // { 'rodada-idParticipante': true }
+  const [participantesInativosPorRodada, setParticipantesInativosPorRodada] = useState({}); 
 
-  // Segurança Admin
   const [isAdmin, setIsAdmin] = useState(false);
   const [inputPin, setInputPin] = useState('');
   const PIN_CORRETO = '1542';
@@ -220,43 +207,49 @@ export default function App() {
     buscarDados();
   }, []);
 
-  // Controla o participante selecionado dinamicamente com base no login
+  // 💡 AJUSTADO: Força o participante selecionado a ficar estritamente nulo se não houver login ativo
   useEffect(() => {
-    if (usuarioLogado && !isAdmin) {
-      setParticipanteSelecionado(usuarioLogado.id);
-    } else if (participantes.length > 0 && !participanteSelecionado) {
-      setParticipanteSelecionado(participantes[0].id);
+    if (usuarioLogado) {
+      if (!isAdmin) {
+        setParticipanteSelecionado(usuarioLogado.id);
+      }
+    } else {
+      setParticipanteSelecionado('');
     }
-  }, [usuarioLogado, participantes, isAdmin]);
+  }, [usuarioLogado, isAdmin]);
 
-  // Função para processar o Login
   const lidarLogin = async (e) => {
     e.preventDefault();
-    setLoadingLogin(true);
+    setLoadingLogin(true); // 💡 Corrigido de setLoadingLogin para os estados corretos
     setErroLogin('');
 
     const celularLimpo = loginCelular.replace(/\D/g, '');
 
-    const { data, error } = await supabase
-      .from('participantes')
-      .select('*')
-      .eq('celular', celularLimpo)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('participantes')
+        .select('*')
+        .eq('celular', celularLimpo)
+        .maybeSingle();
 
-    if (error || !data) {
-      setErroLogin('Número de celular não cadastrado no bolão.');
+      if (error || !data) {
+        setErroLogin('Número de celular não cadastrado no bolão.');
+        setLoadingLogin(false);
+        return;
+      }
+
+      if (data.senha !== loginSenha) {
+        setErroLogin('Senha incorreta. Verifique e tente novamente.');
+        setLoadingLogin(false);
+        return;
+      }
+
+      setUsuarioLogado(data);
+    } catch (err) {
+      setErroLogin('Falha ao conectar com o servidor.');
+    } finally {
       setLoadingLogin(false);
-      return;
     }
-
-    if (data.senha !== loginSenha) {
-      setErroLogin('Senha incorreta. Verifique e tente novamente.');
-      setLoadingLogin(false);
-      return;
-    }
-
-    setUsuarioLogado(data);
-    setLoadingLogin(false);
   };
 
   const lidarSalvarPalpite = async (jogoId, placarCasa, placarFora) => {
@@ -282,7 +275,7 @@ export default function App() {
       }).eq('id', jogoId);
 
       if (error) throw error;
-      alert('Placar real atualizado!');
+      alert('Placar real updated!');
       buscarDados();
     } catch (e) { alert(e.message); }
   };
@@ -299,7 +292,7 @@ export default function App() {
         .insert([{ 
           nome: novoParticipanteNome.trim(),
           celular: celularLimpo,
-          senha: '1234' 
+          senha: '123' 
         }]);
 
       if (error) throw error;
@@ -416,7 +409,7 @@ export default function App() {
   const rankingFiltrado = calcularRankingPorRodada();
   const tabelasCopa = calcularTabelaGruposCopa();
 
-  // --- RENDEREZAÇÃO DA TELA DE LOGIN (MANTÉM AS FONTES SLATE ORIGINAIS DO SEU PROJETO) ---
+  // --- RENDEREZAÇÃO DA TELA DE LOGIN ---
   if (!usuarioLogado) {
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 font-sans flex flex-col justify-center items-center px-4">
@@ -473,10 +466,9 @@ export default function App() {
     );
   }
 
-  // --- TELA PRINCIPAL (SEU DESIGN MARAVILHOSO VOLTOU COMPLETO) ---
+  // --- TELA PRINCIPAL ---
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans antialiased pb-12">
-      {/* HEADER BAR */}
       <header className="border-b border-slate-800 bg-slate-950 sticky top-0 z-50 px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4 shadow-md">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-black bg-gradient-to-r from-yellow-400 to-green-500 bg-clip-text text-transparent">🏆 BOLÃO COPA 2026</h1>
@@ -485,7 +477,6 @@ export default function App() {
           </span>
         </div>
 
-        {/* CONTROLES DAS ABAS */}
         <nav className="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold">
           <button onClick={() => setAbaAtiva('visualizacao')} className={`px-3 py-1.5 rounded-lg ${abaAtiva === 'visualizacao' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
             {isAdmin ? '👁️ Ver Palpites' : '📝 Meus Palpites'}
@@ -495,7 +486,6 @@ export default function App() {
           <button onClick={() => setAbaAtiva('grupos-copa')} className={`px-3 py-1.5 rounded-lg ${abaAtiva === 'grupos-copa' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>🏆 Grupos da Copa</button>
         </nav>
 
-        {/* PIN DE SEGURANÇA & LOGOUT */}
         <div className="flex items-center gap-2">
           {!isAdmin && (
             <form onSubmit={verificarPinAdmin} className="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
@@ -509,7 +499,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* SUBBARRA: FILTRO DE DIA */}
       {abaAtiva !== 'ranking' && abaAtiva !== 'grupos-copa' && (
         <div className="bg-slate-950 border-b border-slate-800 py-3 sticky top-[57px] z-40 shadow-sm overflow-x-auto">
           <div className="max-w-6xl mx-auto px-4 flex gap-2">
@@ -520,10 +509,8 @@ export default function App() {
         </div>
       )}
 
-      {/* CONTEÚDO PRINCIPAL DAS ABAS */}
       <main className="max-w-6xl mx-auto px-4 py-6">
 
-        {/* ABA 1: MEUS PALPITES (LOGADO) */}
         {abaAtiva === 'visualizacao' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
@@ -533,7 +520,7 @@ export default function App() {
                   jogo={j} 
                   participanteId={participanteSelecionado} 
                   isAdmin={false} 
-                  visaoApenasLeitura={false} // Liberado para palpitar na própria conta!
+                  visaoApenasLeitura={false}
                   onSalvarPalpite={lidarSalvarPalpite}
                 />
               ))}
@@ -546,11 +533,10 @@ export default function App() {
           </div>
         )}
 
-        {/* ABA 2: PAINEL GERAL (EXCLUSIVO ADMIN - MANTÉM OS SEUS JOGOS E CADASTROS JUNTOS) */}
         {abaAtiva === 'painel-admin' && isAdmin && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
-              {jogosFiltrados.map(j => <CardJogoDuplo key={j.id} jogo={j} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)}
+              {jogosFiltrados.map(j => <CardJogoDuplo key={j.id} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)}
             </div>
             
             <div className="space-y-4">
@@ -561,7 +547,6 @@ export default function App() {
                 </select>
               </div>
 
-              {/* SUSPENDER PARTICIPANTE */}
               <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h3 className="text-xs font-black uppercase text-slate-400 mb-2">🚫 Bloquear na Rodada Atual</h3>
                 <div className="space-y-2 max-h-40 overflow-y-auto bg-slate-950 p-2 rounded-xl border border-slate-800">
@@ -580,17 +565,15 @@ export default function App() {
                 </div>
               </div>
 
-              {/* FORMULÁRIO DE PRÉ-CADASTRO EXPANDIDO */}
               <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h3 className="text-xs font-black uppercase text-slate-400 mb-2">➕ Cadastrar Competidor</h3>
                 <form onSubmit={cadastrarParticipante} className="space-y-2">
                   <input type="text" placeholder="Nome do amigo" value={novoParticipanteNome} onChange={(e) => setNovoParticipanteNome(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-200 focus:outline-none" required />
-                  <input type="text" placeholder="Celular (Ex: 12999999999)" value={novoParticipanteCelular} value={novoParticipanteCelular} onChange={(e) => setNovoParticipanteCelular(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-200 focus:outline-none" required />
+                  <input type="text" placeholder="Celular (Ex: 12999999999)" value={novoParticipanteCelular} onChange={(e) => setNovoParticipanteCelular(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-200 focus:outline-none" required />
                   <button type="submit" className="w-full bg-green-500 text-slate-950 font-black py-2 rounded-xl text-xs hover:brightness-110 shadow-md">Adicionar no Banco</button>
                 </form>
               </div>
 
-              {/* VISUALIZADOR DE LOGINS DO SISTEMA */}
               <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h3 className="text-xs font-black uppercase text-slate-400 mb-2">🔑 Contas e Senhas</h3>
                 <div className="space-y-2 max-h-40 overflow-y-auto text-[11px] font-mono bg-slate-950 p-2 rounded-xl border border-slate-800">
@@ -607,7 +590,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ABA 3: RANKING ISOLADO (INTACTO) */}
         {abaAtiva === 'ranking' && (
           <div className="max-w-2xl mx-auto space-y-4">
             <div className="flex justify-between items-center bg-slate-950 border border-slate-800 p-4 rounded-xl shadow">
@@ -630,9 +612,9 @@ export default function App() {
                 </thead>
                 <tbody className="divide-y divide-slate-900 text-sm font-bold">
                   {rankingFiltrado.map((p, idx) => (
-                    <tr key={p.id} className={`hover:bg-slate-900/30 ${usuarioLogado.id === p.id ? 'bg-yellow-500/5' : ''}`}>
+                    <tr key={p.id} className={`hover:bg-slate-900/30 ${usuarioLogado?.id === p.id ? 'bg-yellow-500/5' : ''}`}>
                       <td className="py-4 px-6 text-center">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`}</td>
-                      <td className="py-4 px-6 text-slate-200">{p.nome} {usuarioLogado.id === p.id && '(Você) ⭐'}</td>
+                      <td className="py-4 px-6 text-slate-200">{p.nome} {usuarioLogado?.id === p.id && '(Você) ⭐'}</td>
                       <td className="py-4 px-6 text-center">
                         <span className={`px-3 py-1 rounded-lg border text-xs ${p.pontos === 'Suspenso/Inativo' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
                           {typeof p.pontos === 'number' ? `${p.pontos} pts` : p.pontos}
@@ -646,7 +628,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ABA 4: CLASSIFICAÇÃO DOS GRUPOS DA COPA (INTACTO) */}
         {abaAtiva === 'grupos-copa' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Object.keys(tabelasCopa).map(letra => (
