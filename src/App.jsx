@@ -53,7 +53,6 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
         </span>
       </div>
 
-      {/* 💡 OTIMIZADO: Quebra linha (flex-wrap) se a tela for muito estreita para não amassar os nomes */}
       <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 sm:gap-4">
         {/* Mandante */}
         <div className="flex items-center gap-2 sm:gap-3 justify-end flex-1 text-right min-w-[90px] sm:min-w-0">
@@ -361,7 +360,7 @@ export default function App() {
         grupos[g][jogo.time_casa.nome] = { nome: jogo.time_casa.nome, escudo: jogo.time_casa.url_escudo, pts: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
       }
       if (jogo.time_fora && !grupos[g][jogo.time_fora.nome]) {
-        grupos[g][jogo.time_fora.nome] = { nome: font = jogo.time_fora.nome, escudo: jogo.time_fora.url_escudo, pts: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
+        grupos[g][jogo.time_fora.nome] = { nome: jogo.time_fora.nome, escudo: jogo.time_fora.url_escudo, pts: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 }; // 💡 CORRIGIDO: Removido o 'font =' intruso daqui
       }
 
       if (jogo.placar_casa !== null && jogo.placar_fora !== null) {
@@ -481,7 +480,6 @@ export default function App() {
           </span>
         </div>
 
-        {/* 💡 OTIMIZADO: Impede amassamento das abas em dispositivos móveis menores com rolagem invisível */}
         <nav className="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold overflow-x-auto w-full lg:w-auto whitespace-nowrap scrollbar-none">
           <button onClick={() => setAbaAtiva('visualizacao')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'visualizacao' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
             {isAdmin ? '👁️ Ver Palpites' : '📝 Meus Palpites'}
@@ -548,7 +546,7 @@ export default function App() {
               {jogosFiltrados.length === 0 ? (
                 <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800 text-slate-400 text-xs font-bold">Nenhum jogo agendado para este dia.</div>
               ) : (
-                jogosFiltrados.map(j => <CardJogoDuplo key={j.id} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)
+                jogosFiltrados.map(j => <CardJogoDuplo key={j.id} juego={j} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)
               )}
             </div>
             
@@ -614,7 +612,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* 💡 OTIMIZADO: Contêiner de rolagem horizontal segura para a tabela de ranking no celular */}
             <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-x-auto shadow-2xl w-full">
               <table className="w-full text-left min-w-[480px]">
                 <thead>
