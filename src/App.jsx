@@ -150,6 +150,14 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
 // COMPONENTE PRINCIPAL: APP
 // ==========================================
 export default function App() {
+
+  const rolarDatasComMouse = (e) => {
+    const container = e.currentTarget;
+      if (e.deltaY !== 0) {
+        container.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }
+  };
   const [usuarioLogado, setUsuarioLogado] = useState(null);
   const [loginCelular, setLoginCelular] = useState('');
   const [loginSenha, setLoginSenha] = useState('');
@@ -503,10 +511,23 @@ export default function App() {
       </header>
 
       {abaAtiva !== 'ranking' && abaAtiva !== 'grupos-copa' && (
-        <div className="bg-slate-950 border-b border-slate-800 py-3 sticky top-[108px] lg:top-[57px] z-40 shadow-sm overflow-x-auto scrollbar-none">
+        <div 
+          onWheel={rolarDatasComMouse} // 💡 Ativa a rolagem com a rodinha do mouse
+          className="bg-slate-950 border-b border-slate-800 py-3 sticky top-[108px] lg:top-[57px] z-40 shadow-sm overflow-x-auto sm:scrollbar-thin sm:scrollbar-thumb-slate-700 sm:scrollbar-track-slate-900"
+        >
           <div className="max-w-6xl mx-auto px-4 flex gap-2">
             {diasCopa.map(d => (
-              <button key={d.data} onClick={() => setDiaSelecionado(d.data)} className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap border ${diaSelecionado === d.data ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-slate-950 border-yellow-400' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>{d.label}</button>
+              <button 
+                key={d.data} 
+                onClick={() => setDiaSelecionado(d.data)} 
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap border ${
+                  diaSelecionado === d.data 
+                    ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-slate-950 border-yellow-400' 
+                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                {d.label}
+              </button>
             ))}
           </div>
         </div>
