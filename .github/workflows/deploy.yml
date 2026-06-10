@@ -1,0 +1,32 @@
+name: Deploy Bolão para o GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Dispara o deploy toda vez que você enviar algo para a branch main
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-size: 20
+
+      - name: Instalar Dependências e Gerar Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Fazer o Deploy para o GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist # Pasta que o Vite gera
+          branch: gh-pages # Branch de destino do site
