@@ -40,28 +40,34 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
     setRealFora(jogo.placar_fora ?? '');
   }, [jogo, participanteId]);
 
-  // 💡 TRAVA DE HORÁRIO: Compara a hora atual com a hora cadastrada do jogo
+  // Trava de horário em tempo real
   const jogoJaComecou = new Date() > new Date(jogo.data_hora);
 
-  // Bloqueia as caixas se for leitura, se já salvou palpite ou se o tempo expirou (Admin não trava)
+  // Bloqueia se for leitura, se já salvou palpite ou se o tempo expirou (Admin ignora)
   const inputsTravados = visaoApenasLeitura || (jaTemPalpite && !isAdmin) || (jogoJaComecou && !isAdmin);
 
   return (
     <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-4 hover:border-slate-700 transition">
       <div className="flex justify-between items-center border-b border-slate-800/60 pb-2">
         <span className="bg-slate-800 px-2.5 py-1 rounded-md text-[10px] font-black text-yellow-500 uppercase tracking-wider">
-          Grupo {jogo.grupo} - Rodada {jogo.rodada}
+          {jogo.fase && jogo.fase !== 'grupo' ? (jogo.fase === '16avos' ? '16 DE FINAL' : jogo.fase.toUpperCase()) : `Grupo ${jogo.grupo}`} - {jogo.numero_jogo ? `Jogo ${jogo.numero_jogo}` : `Rodada ${jogo.rodada}`}
         </span>
         <span className="text-xs text-slate-400 font-bold">
-          🕒 {new Date(jogo.data_hora).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          🕒 {new Date(jogo.data_hora).toLocaleDateString([], {day: '2-digit', month: '2-digit'})} - {new Date(jogo.data_hora).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
 
       <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 sm:gap-4">
-        {/* Mandante */}
+        {/* Mandante (Seguro contra nulos) */}
         <div className="flex items-center gap-2 sm:gap-3 justify-end flex-1 text-right min-w-[90px] sm:min-w-0">
-          <span className="font-bold text-xs sm:text-sm tracking-wide truncate">{jogo.time_casa?.nome}</span>
-          <img src={jogo.time_casa?.url_escudo} alt="" className="w-8 h-5 sm:w-10 sm:h-7 object-cover rounded shadow border border-slate-700 flex-shrink-0" />
+          <span className="font-bold text-xs sm:text-sm tracking-wide truncate text-slate-200">
+            {jogo.time_casa?.nome || "A definir"}
+          </span>
+          {jogo.time_casa?.url_escudo ? (
+            <img src={jogo.time_casa.url_escudo} alt="" className="w-8 h-5 sm:w-10 sm:h-7 object-cover rounded shadow border border-slate-700 flex-shrink-0" />
+          ) : (
+            <div className="w-8 h-5 sm:w-10 sm:h-7 bg-slate-900 border border-slate-800 rounded flex items-center justify-center text-[10px] text-slate-600 font-bold flex-shrink-0">🏳️</div>
+          )}
         </div>
 
         {/* CONTROLE DO PLACAR REAL */}
@@ -96,10 +102,16 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
           )}
         </div>
 
-        {/* Visitante */}
+        {/* Visitante (Seguro contra nulos) */}
         <div className="flex items-center gap-2 sm:gap-3 justify-start flex-1 text-left min-w-[90px] sm:min-w-0">
-          <img src={jogo.time_fora?.url_escudo} alt="" className="w-8 h-5 sm:w-10 sm:h-7 object-cover rounded shadow border border-slate-700 flex-shrink-0" />
-          <span className="font-bold text-xs sm:text-sm tracking-wide truncate">{jogo.time_fora?.nome}</span>
+          {jogo.time_fora?.url_escudo ? (
+            <img src={jogo.time_fora.url_escudo} alt="" className="w-8 h-5 sm:w-10 sm:h-7 object-cover rounded shadow border border-slate-700 flex-shrink-0" />
+          ) : (
+            <div className="w-8 h-5 sm:w-10 sm:h-7 bg-slate-900 border border-slate-800 rounded flex items-center justify-center text-[10px] text-slate-600 font-bold flex-shrink-0">🏳️</div>
+          )}
+          <span className="font-bold text-xs sm:text-sm tracking-wide truncate text-slate-200">
+            {jogo.time_fora?.nome || "A definir"}
+          </span>
         </div>
       </div>
 
@@ -108,7 +120,7 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
         <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-3">
           <span className="text-xs font-bold text-slate-400">Palpite:</span>
           <div className="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 mx-auto sm:mx-0">
-            <img src={jogo.time_casa?.url_escudo} alt="" className="w-5 h-3.5 object-cover rounded-sm border border-slate-700" />
+            {jogo.time_casa?.url_escudo && <img src={jogo.time_casa.url_escudo} alt="" className="w-5 h-3.5 object-cover rounded-sm border border-slate-700" />}
             <input 
               type="number" 
               disabled={inputsTravados}
@@ -126,18 +138,16 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
               className="w-8 bg-transparent text-center font-bold text-sm text-yellow-400 focus:outline-none disabled:text-slate-500"
               placeholder="-"
             />
-            <img src={jogo.time_fora?.url_escudo} alt="" className="w-5 h-3.5 object-cover rounded-sm border border-slate-700" />
+            {jogo.time_fora?.url_escudo && <img src={jogo.time_fora.url_escudo} alt="" className="w-5 h-3.5 object-cover rounded-sm border border-slate-700" />}
           </div>
         </div>
 
-        {/* 💡 AVISO NO RODAPÉ CORRIGIDO: Exibe a trava se o prazo expirou e o usuário ficou sem palpitar */}
         {jogoJaComecou && !jaTemPalpite && !isAdmin && (
           <span className="text-[11px] text-red-400 font-bold bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-lg text-center w-full sm:w-auto">
-            🔒 Apostas encerradas para este jogo
+            🔒 Apostas encerradas
           </span>
         )}
 
-        {/* O botão só renderiza se o jogo NÃO começou ou se for Administrador */}
         {((!inputsTravados && !jogoJaComecou) || isAdmin) && (
           <button
             onClick={() => onSalvarPalpite(jogo.id, palpiteCasa, palpiteFora)}
@@ -169,6 +179,7 @@ export default function App() {
   const [loadingLogin, setLoadingLogin] = useState(false);
 
   const [abaAtiva, setAbaAtiva] = useState('visualizacao'); 
+  const [faseMataMataAtiva, setFaseMataMataAtiva] = useState('16avos'); // 💡 Iniciando corretamente em '16avos'
   const [jogos, setJogos] = useState([]);
   const [participantes, setParticipantes] = useState([]);
   const [palpitesTodos, setPalpitesTodos] = useState([]);
@@ -196,7 +207,6 @@ export default function App() {
     { data: '2026-06-27', label: 'Sáb, 27/06' }
   ];
 
-  // Rolagem horizontal da barra com a rodinha do mouse no computador
   const rolarDatasComMouse = (e) => {
     const container = e.currentTarget;
     if (e.deltaY !== 0) {
@@ -208,7 +218,7 @@ export default function App() {
   const buscarDados = async () => {
     try {
       const resJogos = await supabase.from('jogos').select(`
-        id, data_hora, grupo, placar_casa, placar_fora, status, rodada,
+        id, data_hora, grupo, placar_casa, placar_fora, status, rodada, fase, numero_jogo,
         time_casa:selecao_casa_id (nome, url_escudo),
         time_fora:selecao_fora_id (nome, url_escudo)
       `).order('data_hora', { ascending: true });
@@ -375,7 +385,7 @@ export default function App() {
 
     jogos.forEach(jogo => {
       const g = jogo.grupo;
-      if (!grupos[g]) return;
+      if (!grupos[g] || !jogo.grupo || jogo.fase === 'oitavas' || jogo.fase === '16avos' || jogo.fase === 'quartas' || jogo.fase === 'semi' || jogo.fase === 'final') return;
 
       if (jogo.time_casa && !grupos[g][jogo.time_casa.nome]) {
         grupos[g][jogo.time_casa.nome] = { nome: jogo.time_casa.nome, escudo: jogo.time_casa.url_escudo, pts: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
@@ -390,15 +400,17 @@ export default function App() {
         const pc = jogo.placar_casa;
         const pf = jogo.placar_fora;
 
-        tc.gp += pc; tc.gc += pf;
-        tf.gp += pf; tf.gc += pc;
+        if (tc && tf) {
+           tc.gp += pc; tc.gc += pf;
+           tf.gp += pf; tf.gc += pc;
 
-        if (pc > pf) { tc.pts += 3; tc.v += 1; tf.d += 1; }
-        else if (pc < pf) { tf.pts += 3; tf.v += 1; tc.d += 1; }
-        else { tc.pts += 1; tf.pts += 1; tc.e += 1; tf.e += 1; }
+           if (pc > pf) { tc.pts += 3; tc.v += 1; tf.d += 1; }
+           else if (pc < pf) { tf.pts += 3; tf.v += 1; tc.d += 1; }
+           else { tc.pts += 1; tf.pts += 1; tc.e += 1; tf.e += 1; }
 
-        tc.sg = tc.gp - tc.gc;
-        tf.sg = tf.gp - tf.gc;
+           tc.sg = tc.gp - tc.gc;
+           tf.sg = tf.gp - tf.gc;
+        }
       }
     });
 
@@ -426,9 +438,12 @@ export default function App() {
   };
 
   const jogosFiltrados = jogos.filter(j => {
+    if (j.fase && j.fase !== 'grupo') return false;
     const d = new Date(j.data_hora);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === diaSelecionado;
   });
+
+  const jogosMataMataFiltrados = jogos.filter(j => j.fase === faseMataMataAtiva);
 
   const rankingFiltrado = calcularRankingPorRodada();
   const tabelasCopa = calcularTabelaGruposCopa();
@@ -490,7 +505,6 @@ export default function App() {
     );
   }
 
-  // --- TELA PRINCIPAL ---
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans antialiased pb-12">
       <header className="border-b border-slate-800 bg-slate-950 sticky top-0 z-50 px-4 py-3 flex flex-col lg:flex-row justify-between items-center gap-4 shadow-md">
@@ -503,7 +517,10 @@ export default function App() {
 
         <nav className="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold overflow-x-auto w-full lg:w-auto whitespace-nowrap scrollbar-none">
           <button onClick={() => setAbaAtiva('visualizacao')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'visualizacao' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
-            {isAdmin ? '👁️ Ver Palpites' : '📝 Meus Palpites'}
+            {isAdmin ? '👁️ Ver Grupos' : '📝 Meus Palpites'}
+          </button>
+          <button onClick={() => setAbaAtiva('mata-mata')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'mata-mata' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
+            🌳 Chaveamento Mata-Mata
           </button>
           {isAdmin && <button onClick={() => setAbaAtiva('painel-admin')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'painel-admin' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>⚙️ Painel Geral</button>}
           <button onClick={() => setAbaAtiva('ranking')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'ranking' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>📊 Ranking Rodada</button>
@@ -523,7 +540,7 @@ export default function App() {
         </div>
       </header>
 
-      {abaAtiva !== 'ranking' && abaAtiva !== 'grupos-copa' && (
+      {abaAtiva === 'visualizacao' && (
         <div 
           onWheel={rolarDatasComMouse} 
           className="bg-slate-950 border-b border-slate-800 py-3 sticky top-[108px] lg:top-[57px] z-40 shadow-sm overflow-x-auto sm:scrollbar-thin sm:scrollbar-thumb-slate-700 sm:scrollbar-track-slate-900"
@@ -552,7 +569,7 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="w-full lg:col-span-2 space-y-4">
               {jogosFiltrados.length === 0 ? (
-                <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800 text-slate-400 text-xs font-bold">Nenhum jogo agendado para este dia.</div>
+                <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800 text-slate-400 text-xs font-bold">Nenhum jogo regular agendado para este dia.</div>
               ) : (
                 jogosFiltrados.map(j => (
                   <CardJogoDuplo 
@@ -569,7 +586,49 @@ export default function App() {
             <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 shadow-xl h-fit w-full">
               <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">👤 Competidor Ativo</h3>
               <p className="text-sm font-bold text-yellow-400">{usuarioLogado.nome}</p>
-              <p className="text-[11px] text-slate-400 mt-2">Você está autenticado. Suas alterações salvam automaticamente os palpites no seu perfil. Palpites fechados para os jogos em andamento.</p>
+              <p className="text-[11px] text-slate-400 mt-2">Você está autenticado. Os palpites salvam no seu perfil. Palpites fechados durante os jogos em andamento.</p>
+            </div>
+          </div>
+        )}
+
+        {abaAtiva === 'mata-mata' && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap gap-2 justify-center bg-slate-950 p-3 rounded-2xl border border-slate-800">
+              <button onClick={() => setFaseMataMataAtiva('16avos')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === '16avos' ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
+                16 de Final 
+              </button>
+              <button onClick={() => setFaseMataMataAtiva('oitavas')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'oitavas' ? 'bg-green-600 border-green-400 text-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
+                Oitavas 
+              </button>
+              <button onClick={() => setFaseMataMataAtiva('quartas')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'quartas' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
+                Quartas 
+              </button>
+              <button onClick={() => setFaseMataMataAtiva('semi')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'semi' ? 'bg-red-600 border-red-400 text-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
+                Semifinais
+              </button>
+              <button onClick={() => setFaseMataMataAtiva('final')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'final' ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
+                Finais 
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+              {jogosMataMataFiltrados.length === 0 ? (
+                <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800 text-slate-400 text-xs font-bold col-span-2">
+                  Nenhum jogo de mata-mata cadastrado na fase "{faseMataMataAtiva === '16avos' ? '16 de final' : faseMataMataAtiva}" por enquanto.
+                </div>
+              ) : (
+                jogosMataMataFiltrados.map(j => (
+                  <CardJogoDuplo 
+                    key={j.id} 
+                    jogo={j} 
+                    participanteId={participanteSelecionado} 
+                    isAdmin={isAdmin} 
+                    visaoApenasLeitura={false}
+                    onSalvarPalpite={lidarSalvarPalpite}
+                    onSalvarResultadoReal={lidarSalvarResultadoReal}
+                  />
+                ))
+              )}
             </div>
           </div>
         )}
@@ -577,11 +636,10 @@ export default function App() {
         {abaAtiva === 'painel-admin' && isAdmin && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="w-full lg:col-span-2 space-y-4">
-              {jogosFiltrados.length === 0 ? (
-                <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800 text-slate-400 text-xs font-bold">Nenhum jogo agendado para este dia.</div>
-              ) : (
-                jogosFiltrados.map(j => <CardJogoDuplo key={j.id} juego={j} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)
-              )}
+               <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-slate-400 font-bold">
+                  💡 <b>Painel Admin:</b> Filtre os jogos normais pela barra de dias superior. Para gerenciar os resultados do mata-mata, você pode usar a própria aba de chaveamento ativando o modo de gravação.
+               </div>
+              {jogosFiltrados.map(j => <CardJogoDuplo key={j.id} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)}
             </div>
             
             <div className="space-y-4 w-full">
@@ -617,19 +675,6 @@ export default function App() {
                   <input type="text" placeholder="Celular (Ex: 12999999999)" value={novoParticipanteCelular} onChange={(e) => setNovoParticipanteCelular(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-200 focus:outline-none" required />
                   <button type="submit" className="w-full bg-green-500 text-slate-950 font-black py-2 rounded-xl text-xs hover:brightness-110 shadow-md transition">Adicionar no Banco</button>
                 </form>
-              </div>
-
-              <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                <h3 className="text-xs font-black uppercase text-slate-400 mb-2">🔑 Contas e Senhas</h3>
-                <div className="space-y-2 max-h-40 overflow-y-auto text-[11px] font-mono bg-slate-950 p-2 rounded-xl border border-slate-800">
-                  {participantes.map(p => (
-                    <div key={p.id} className="border-b border-slate-900 pb-1 text-slate-300">
-                      <p className="font-bold text-yellow-500">{p.nome}</p>
-                      <p>📱 Tel: {p.celular || 'Sem número'}</p>
-                      <p>🔑 Pass: {p.senha}</p>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
@@ -682,7 +727,7 @@ export default function App() {
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PTS | SG | GP</span>
                 </div>
                 <div className="p-2 space-y-1.5">
-                  {tabelasCopa[letra].map((time, idx) => (
+                  {tabelasCopa[letra] && tabelasCopa[letra].map((time, idx) => (
                     <div key={time.nome} className="flex items-center justify-between text-xs font-bold px-2 py-1.5 hover:bg-slate-900/40 rounded transition">
                       <div className="flex items-center gap-2 truncate mr-2">
                         <span className="text-[10px] font-mono text-slate-500 w-3">{idx + 1}</span>
