@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 
 // ==========================================
-// SUBCOMPONENTE: CARD DE JOGO DUPLO (OTIMIZADO)
+// SUBCOMPONENTE: CARD DE JOGO DUPLO (TRAVA DE HORÁRIO COMPLETA)
 // ==========================================
 function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSalvarPalpite, onSalvarResultadoReal }) {
   const [palpiteCasa, setPalpiteCasa] = useState('');
@@ -40,7 +40,11 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
     setRealFora(jogo.placar_fora ?? '');
   }, [jogo, participanteId]);
 
-  const inputsTravados = visaoApenasLeitura || (jaTemPalpite && !isAdmin);
+  // 💡 TRAVA DE HORÁRIO: Compara a hora atual com a hora cadastrada do jogo
+  const jogoJaComecou = new Date() > new Date(jogo.data_hora);
+
+  // Bloqueia as caixas se for leitura, se já salvou palpite ou se o tempo expirou (Admin não trava)
+  const inputsTravados = visaoApenasLeitura || (jaTemPalpite && !isAdmin) || (jogoJaComecou && !isAdmin);
 
   return (
     <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col gap-4 hover:border-slate-700 transition">
@@ -126,7 +130,15 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
           </div>
         </div>
 
-        {(!inputsTravados || isAdmin) && (
+        {/* 💡 AVISO NO RODAPÉ CORRIGIDO: Exibe a trava se o prazo expirou e o usuário ficou sem palpitar */}
+        {jogoJaComecou && !jaTemPalpite && !isAdmin && (
+          <span className="text-[11px] text-red-400 font-bold bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-lg text-center w-full sm:w-auto">
+            🔒 Apostas encerradas para este jogo
+          </span>
+        )}
+
+        {/* O botão só renderiza se o jogo NÃO começou ou se for Administrador */}
+        {((!inputsTravados && !jogoJaComecou) || isAdmin) && (
           <button
             onClick={() => onSalvarPalpite(jogo.id, palpiteCasa, palpiteFora)}
             disabled={!participanteId}
@@ -150,14 +162,6 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
 // COMPONENTE PRINCIPAL: APP
 // ==========================================
 export default function App() {
-
-  const rolarDatasComMouse = (e) => {
-    const container = e.currentTarget;
-      if (e.deltaY !== 0) {
-        container.scrollLeft += e.deltaY;
-        e.preventDefault();
-      }
-  };
   const [usuarioLogado, setUsuarioLogado] = useState(null);
   const [loginCelular, setLoginCelular] = useState('');
   const [loginSenha, setLoginSenha] = useState('');
@@ -191,6 +195,15 @@ export default function App() {
     { data: '2026-06-25', label: 'Qui, 25/06' }, { data: '2026-06-26', label: 'Sex, 26/06' },
     { data: '2026-06-27', label: 'Sáb, 27/06' }
   ];
+
+  // Rolagem horizontal da barra com a rodinha do mouse no computador
+  const rolarDatasComMouse = (e) => {
+    const container = e.currentTarget;
+    if (e.deltaY !== 0) {
+      container.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }
+  };
 
   const buscarDados = async () => {
     try {
@@ -368,7 +381,7 @@ export default function App() {
         grupos[g][jogo.time_casa.nome] = { nome: jogo.time_casa.nome, escudo: jogo.time_casa.url_escudo, pts: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
       }
       if (jogo.time_fora && !grupos[g][jogo.time_fora.nome]) {
-        grupos[g][jogo.time_fora.nome] = { nome: jogo.time_fora.nome, escudo: jogo.time_fora.url_escudo, pts: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 }; // 💡 CORRIGIDO: Removido o 'font =' intruso daqui
+        grupos[g][jogo.time_fora.nome] = { nome: jogo.time_fora.nome, escudo: jogo.time_fora.url_escudo, pts: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 }; 
       }
 
       if (jogo.placar_casa !== null && jogo.placar_fora !== null) {
@@ -512,7 +525,7 @@ export default function App() {
 
       {abaAtiva !== 'ranking' && abaAtiva !== 'grupos-copa' && (
         <div 
-          onWheel={rolarDatasComMouse} // 💡 Ativa a rolagem com a rodinha do mouse
+          onWheel={rolarDatasComMouse} 
           className="bg-slate-950 border-b border-slate-800 py-3 sticky top-[108px] lg:top-[57px] z-40 shadow-sm overflow-x-auto sm:scrollbar-thin sm:scrollbar-thumb-slate-700 sm:scrollbar-track-slate-900"
         >
           <div className="max-w-6xl mx-auto px-4 flex gap-2">
@@ -556,7 +569,7 @@ export default function App() {
             <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 shadow-xl h-fit w-full">
               <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">👤 Competidor Ativo</h3>
               <p className="text-sm font-bold text-yellow-400">{usuarioLogado.nome}</p>
-              <p className="text-[11px] text-slate-400 mt-2">Você está autenticado. Suas alterações salvam automaticamente os palpites no seu perfil.</p>
+              <p className="text-[11px] text-slate-400 mt-2">Você está autenticado. Suas alterações salvam automaticamente os palpites no seu perfil. Palpites fechados para os jogos em andamento.</p>
             </div>
           </div>
         )}
@@ -585,8 +598,8 @@ export default function App() {
                   {participantes.map(p => {
                     const jogoExemplo = jogosFiltrados[0];
                     const rodadaAtual = jogoExemplo ? jogoExemplo.rodada : 1;
-                    const chave = `${rodadaAtual}-${p.id}`;
-                    const estaSuspenso = participantesInativosPorRodada[chave];
+                    const apiKey = `${rodadaAtual}-${p.id}`;
+                    const estaSuspenso = participantesInativosPorRodada[apiKey];
                     return (
                       <label key={p.id} className="flex items-center justify-between text-xs font-bold p-1 hover:bg-slate-900 rounded cursor-pointer">
                         <span className={estaSuspenso ? 'text-red-400 line-through' : 'text-slate-300'}>{p.nome}</span>
