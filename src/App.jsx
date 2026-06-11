@@ -379,10 +379,10 @@ export default function App() {
             const saldoPalpite = pC - pF;
 
             if (pC === rC && pF === rF) {
-              pontos += 5;
+              pontos += 4;
               exatos += 1;
             } else if (((rC > rF && pC > pF) || (rC < rF && pC < pF)) && saldoReal === saldoPalpite) {
-              pontos += 3;
+              pontos += 2;
               saldos += 1;
             } else if ((pC > pF && rC > rF) || (pC < pF && rC < rF) || (pC === pF && rC === rF)) {
               pontos += 1;
@@ -636,7 +636,7 @@ export default function App() {
             <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 shadow-xl h-fit w-full">
               <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">👤 Competidor Ativo</h3>
               <p className="text-sm font-bold text-yellow-400">{usuarioLogado.nome}</p>
-              <p className="text-[11px] text-slate-400 mt-2">Você está autenticado. Os palpites salvam no seu perfil.</p>
+              <p className="text-[11px] text-slate-400 mt-2">Você está autenticado. Os palpites salvam no seu perfil. Palpites fechados para as rodadas em andamento.</p>
             </div>
           </div>
         )}
@@ -843,13 +843,13 @@ export default function App() {
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-center text-center hover:border-slate-700 transition">
               <span className="text-2xl mb-1">🍔</span>
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-wide">Lanche do Tonhão</h4>
-              <p className="text-[11px] text-slate-500 font-medium mt-1">Aquele lanche bruto e de respeito para o campeão.</p>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">Aquele lanche bruto e de respeito para comemorar.</p>
             </div>
 
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-center text-center hover:border-slate-700 transition">
               <span className="text-2xl mb-1">🍺</span>
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-wide">Brinde da Adega do Negão</h4>
-              <p className="text-[11px] text-slate-500 font-medium mt-1">Para brindar a liderança com estilo e bebida trincando.</p>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">Para brindar a vitória com estilo e bebida trincando.</p>
             </div>
           </div>
         </div>
@@ -862,11 +862,11 @@ export default function App() {
           
           <div className="space-y-3 pl-1 text-slate-300">
             <div>
-              <span className="text-yellow-500 font-black">🔥 Placar Exato (5 pontos):</span> 
+              <span className="text-yellow-500 font-black">🔥 Placar Exato (4 pontos):</span> 
               <span> Quando você acerta os gols exatos de ambas as equipes (ex: Palpite 2x1, Jogo 2x1).</span>
             </div>
             <div>
-              <span className="text-yellow-500 font-black">⚽ Vencedor e Saldo de Gols (3 pontos):</span> 
+              <span className="text-yellow-500 font-black">⚽ Vencedor e Saldo de Gols (2 pontos):</span> 
               <span> Acertar o vencedor da partida e a diferença exata de gols, mas errando o placar.</span>
             </div>
             <div>
@@ -876,7 +876,7 @@ export default function App() {
           </div>
 
           <p className="my-3 border-t border-slate-800/60 pt-3 text-slate-500 font-medium">
-            <b>Hierarquia de Desempate:</b> Havendo igualdade na pontuação total da rodada, as posições serão definidas automaticamente seguindo a ordem: 1º Placares Exatos (5 pts) ➡️ 2º Acertos de Vencedor e Saldo (3 pts).
+            <b>Hierarquia de Desempate:</b> Havendo igualdade na pontuação total da rodada, as posições serão definidas automaticamente seguindo a ordem: 1º Placares Exatos (4 pts) ➡️ 2º Acertos de Vencedor e Saldo (2 pts).
           </p>
         </div>
 
