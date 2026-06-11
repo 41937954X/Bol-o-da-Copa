@@ -397,7 +397,7 @@ export default function App() {
 
       const palpitesDaRodada = (palpitesTodos || []).filter(palp => {
         const jogo = (jogos || []).find(j => j.id === palp.jogo_id);
-        return palp.participante_id === p.id && jogo && jogo.rodada === parseInt(rodadaFiltroRanking);
+        return p && palp.participante_id === p.id && jogo && jogo.rodada === parseInt(rodadaFiltroRanking);
       });
 
       palpitesDaRodada.forEach(palpite => {
@@ -690,32 +690,48 @@ export default function App() {
                 return (
                   <div key={j.id} className="bg-slate-950 border border-slate-800/80 rounded-2xl p-4 shadow-xl space-y-4">
                     
-                    {/* 💡 MODIFICADO: Injeção das bandeiras (URLs de escudos) no título do confronto público */}
-                    <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl text-xs font-bold border border-slate-800">
-                      <span className="text-yellow-500 uppercase font-black tracking-wider text-[10px]">
-                        {j.fase === 'grupo' ? `Grupo ${j.grupo || ''}` : j.fase === '16avos' ? '16 de Final' : j.fase.toUpperCase()} - Jogo {j.numero_jogo || j.id}
-                      </span>
+                    {/* 💡 REFATORADO: Layout flexível e empilhado adaptado estritamente para Mobile com Placar Real visível e isolado */}
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800">
                       
-                      <div className="flex items-center gap-2 text-slate-200 font-black sm:text-sm">
-                        {/* Casa */}
-                        <span className="truncate max-w-[100px] sm:max-w-none">{j.time_casa?.nome || 'A definir'}</span>
-                        {j.time_casa?.url_escudo ? (
-                          <img src={j.time_casa.url_escudo} alt="" className="w-5 h-3.5 object-cover rounded shadow-sm border border-slate-700 flex-shrink-0" />
-                        ) : (
-                          <span className="text-xs">🏳️</span>
-                        )}
+                      <div className="flex justify-between sm:justify-start items-center w-full sm:w-auto gap-4">
+                        <span className="text-yellow-500 uppercase font-black tracking-wider text-[10px] bg-slate-950 px-2 py-1 rounded">
+                          {j.fase === 'grupo' ? `Grupo ${j.grupo || ''}` : j.fase === '16avos' ? '16 de Final' : j.fase.toUpperCase()} - Jogo {j.numero_jogo || j.id}
+                        </span>
+                        
+                        {/* Placar real isolado no mobile */}
+                        <div className="flex sm:hidden items-center gap-1.5 bg-slate-950 px-3 py-1 rounded border border-slate-800">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 mr-1">REAL:</span>
+                          <span className="font-mono text-sm font-black text-yellow-400">{j.placar_casa ?? '-'}</span>
+                          <span className="text-xs text-slate-600 font-bold">x</span>
+                          <span className="font-mono text-sm font-black text-yellow-400">{j.placar_fora ?? '-'}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-center w-full sm:w-auto gap-2 sm:gap-3 text-slate-200 font-black text-xs sm:text-sm">
+                        {/* Mandante */}
+                        <div className="flex items-center gap-1.5 justify-end flex-1 sm:flex-initial text-right">
+                          <span className="truncate max-w-[85px] sm:max-w-none text-slate-200">{j.time_casa?.nome || 'A definir'}</span>
+                          {j.time_casa?.url_escudo ? (
+                            <img src={j.time_casa.url_escudo} alt="" className="w-5 h-3.5 object-cover rounded shadow-sm border border-slate-700 flex-shrink-0" />
+                          ) : (
+                            <span className="text-xs">🏳️</span>
+                          )}
+                        </div>
 
-                        <span className="mx-1 bg-slate-950 px-2 py-0.5 rounded text-yellow-400 font-mono">
+                        {/* Placar Real em Desktop */}
+                        <span className="hidden sm:inline-block mx-1 bg-slate-950 px-2 py-0.5 rounded text-yellow-400 font-mono font-black border border-slate-800">
                           {j.placar_casa ?? '-'} x {j.placar_fora ?? '-'}
                         </span>
 
-                        {/* Fora */}
-                        {j.time_fora?.url_escudo ? (
-                          <img src={j.time_fora.url_escudo} alt="" className="w-5 h-3.5 object-cover rounded shadow-sm border border-slate-700 flex-shrink-0" />
-                        ) : (
-                          <span className="text-xs">🏳️</span>
-                        )}
-                        <span className="truncate max-w-[100px] sm:max-w-none">{j.time_fora?.nome || 'A definir'}</span>
+                        {/* Visitante */}
+                        <div className="flex items-center gap-1.5 justify-start flex-1 sm:flex-initial text-left">
+                          {j.time_fora?.url_escudo ? (
+                            <img src={j.time_fora.url_escudo} alt="" className="w-5 h-3.5 object-cover rounded shadow-sm border border-slate-700 flex-shrink-0" />
+                          ) : (
+                            <span className="text-xs">🏳️</span>
+                          )}
+                          <span className="truncate max-w-[85px] sm:max-w-none text-slate-200">{j.time_fora?.nome || 'A definir'}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -724,11 +740,12 @@ export default function App() {
                         <thead>
                           <tr className="bg-slate-900/80 text-slate-500 font-black uppercase text-[10px] tracking-wider border-b border-slate-800">
                             <th className="py-2.5 px-4">Participante (Ordem Alfabética)</th>
-                            <th className="py-2.5 px-4 text-center w-36">Palpite Registrado</th>
+                            <th className="py-2.5 px-4 text-center w-32 sm:w-36">Palpite Registrado</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-900/60 font-medium">
                           {(participantes || []).map(p => {
+                            {/* 💡 SOLUCIONADO EM ESCALA ABSOLUTA: Varredura limpa e sem colisão de escopos */}
                             const palpiteReal = (palpitesTodos || []).find(palp => 
                               palp && palp.jogo_id === j.id && p && palp.participante_id === p.id
                             );
@@ -766,7 +783,7 @@ export default function App() {
             <div className="flex flex-wrap gap-2 justify-center bg-slate-950 p-3 rounded-2xl border border-slate-800">
               <button onClick={() => setFaseMataMataAtiva('16avos')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === '16avos' ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>16 de Final</button>
               <button onClick={() => setFaseMataMataAtiva('oitavas')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'oitavas' ? 'bg-green-600 border-green-400 text-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>Oitavas</button>
-              <button onClick={() => setFaseMataMataAtiva('quartas')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'quartas' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>Quartas</button>
+              <button onClick={() => setFaseMataMataAtiva('quartas')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'quartas' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-slate-900 text-slate-400'}`}>Quartas</button>
               <button onClick={() => setFaseMataMataAtiva('semi')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'semi' ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-400'}`}>Semifinais</button>
               <button onClick={() => setFaseMataMataAtiva('final')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'final' ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-900 text-slate-400'}`}>Finais</button>
             </div>
