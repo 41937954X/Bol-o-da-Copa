@@ -58,7 +58,7 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
       </div>
 
       <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 sm:gap-4">
-        {/* Mandante (Seguro contra nulos) */}
+        {/* Mandante */}
         <div className="flex items-center gap-2 sm:gap-3 justify-end flex-1 text-right min-w-[90px] sm:min-w-0">
           <span className="font-bold text-xs sm:text-sm tracking-wide truncate text-slate-200">
             {jogo.time_casa?.nome || "A definir"}
@@ -102,7 +102,7 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
           )}
         </div>
 
-        {/* Visitante (Seguro contra nulos) */}
+        {/* Visitante */}
         <div className="flex items-center gap-2 sm:gap-3 justify-start flex-1 text-left min-w-[90px] sm:min-w-0">
           {jogo.time_fora?.url_escudo ? (
             <img src={jogo.time_fora.url_escudo} alt="" className="w-8 h-5 sm:w-10 sm:h-7 object-cover rounded shadow border border-slate-700 flex-shrink-0" />
@@ -179,7 +179,7 @@ export default function App() {
   const [loadingLogin, setLoadingLogin] = useState(false);
 
   const [abaAtiva, setAbaAtiva] = useState('visualizacao'); 
-  const [faseMataMataAtiva, setFaseMataMataAtiva] = useState('16avos'); // 💡 Iniciando corretamente em '16avos'
+  const [faseMataMataAtiva, setFaseMataMataAtiva] = useState('16avos'); 
   const [jogos, setJogos] = useState([]);
   const [participantes, setParticipantes] = useState([]);
   const [palpitesTodos, setPalpitesTodos] = useState([]);
@@ -194,6 +194,9 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [inputPin, setInputPin] = useState('');
   const PIN_CORRETO = '1542';
+
+  // Controla se o admin está visualizando um dia da fase de grupos ou uma chave de mata-mata
+  const [adminFiltroTipo, setAdminFiltroTipo] = useState('grupo'); 
 
   const diasCopa = [
     { data: '2026-06-11', label: 'Qui, 11/06' }, { data: '2026-06-12', label: 'Sex, 12/06' },
@@ -288,7 +291,7 @@ export default function App() {
 
   const lidarSalvarPalpite = async (jogoId, placarCasa, placarFora) => {
     try {
-      const { error } = await supabase.from('palpites').upsert({
+      const { error } = await supabase.from('palpites').withConverter().upsert({
         participante_id: participanteSelecionado,
         jogo_id: jogoId,
         palpite_casa: placarCasa === '' ? null : parseInt(placarCasa),
@@ -309,7 +312,7 @@ export default function App() {
       }).eq('id', jogoId);
 
       if (error) throw error;
-      alert('Placar real updated!');
+      alert('Placar real atualizado com sucesso!');
       buscarDados();
     } catch (e) { alert(e.message); }
   };
@@ -345,14 +348,19 @@ export default function App() {
     }));
   };
 
+  // 💡 ATUALIZADO: Nova regra de pontuação (5, 3, 1) e ordenação automática do ranking
   const calcularRankingPorRodada = () => {
     return participantes.map(p => {
       const chaveInativo = `${rodadaFiltroRanking}-${p.id}`;
       if (participantesInativosPorRodada[chaveInativo]) {
-        return { ...p, pontos: 'Suspenso/Inativo' };
+        return { ...p, pontos: 'Suspenso/Inativo', exatos: 0, saldos: 0, tendencias: 0 };
       }
 
       let pontos = 0;
+      let exatos = 0;      // Placar Exato (5 pts)
+      let saldos = 0;      // Vencedor e Saldo (3 pts)
+      let tendencias = 0;  // Apenas Vencedor/Empate (1 pt)
+
       const palpitesDaRodada = palpitesTodos.filter(palp => {
         const jogo = jogos.find(j => j.id === palp.jogo_id);
         return palp.participante_id === p.id && jogo && jogo.rodada === parseInt(rodadaFiltroRanking);
@@ -365,16 +373,36 @@ export default function App() {
           const pC = palpite.palpite_casa; const pF = palpite.palpite_fora;
 
           if (pC !== null && pF !== null) {
-            if (pC === rC && pF === rF) pontos += 3;
-            else if ((pC > pF && rC > rF) || (pC < pF && rC < rF) || (pC === pF && rC === rF)) pontos += 1;
+            const saldoReal = rC - rF;
+            const saldoPalpite = pC - pF;
+
+            if (pC === rC && pF === rF) {
+              // 1. Placar Exato
+              pontos += 4;
+              exatos += 1;
+            } else if (((rC > rF && pC > pF) || (rC < rF && pC < pF)) && saldoReal === saldoPalpite) {
+              // 2. Vencedor e Saldo de gols (Apenas para vitórias)
+              pontos += 2;
+              saldos += 1;
+            } else if ((pC > pF && rC > rF) || (pC < pF && rC < rF) || (pC === pF && rC === rF)) {
+              // 3. Apenas Vencedor ou Empate
+              pontos += 1;
+              tendencias += 1;
+            }
           }
         }
       });
-      return { ...p, pontos };
+      return { ...p, pontos, exatos, saldos, tendencias };
     }).sort((a, b) => {
       if (a.pontos === 'Suspenso/Inativo') return 1;
       if (b.pontos === 'Suspenso/Inativo') return -1;
-      return b.pontos - a.pontos;
+      
+      // 1º Critério: Pontuação Geral (5, 3, 1)
+      if (b.pontos !== a.pontos) return b.pontos - a.pontos;
+      // 2º Critério: Maior número de placares exatos
+      if (b.exatos !== a.exatos) return b.exatos - a.exatos;
+      // 3º Critério: Maior número de acertos de saldo
+      return b.saldos - a.saldos;
     });
   };
 
@@ -436,6 +464,17 @@ export default function App() {
     setLoginCelular('');
     setLoginSenha('');
   };
+
+  // Filtro adaptativo para a lista do Admin
+  const adminJogosFiltrados = jogos.filter(j => {
+    if (adminFiltroTipo === 'grupo') {
+      if (j.fase && j.fase !== 'grupo') return false;
+      const d = new Date(j.data_hora);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === diaSelecionado;
+    } else {
+      return j.fase === adminFiltroTipo;
+    }
+  });
 
   const jogosFiltrados = jogos.filter(j => {
     if (j.fase && j.fase !== 'grupo') return false;
@@ -506,7 +545,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans antialiased pb-12">
+    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans antialiased pb-4">
       <header className="border-b border-slate-800 bg-slate-950 sticky top-0 z-50 px-4 py-3 flex flex-col lg:flex-row justify-between items-center gap-4 shadow-md">
         <div className="flex items-center justify-between w-full lg:w-auto gap-3">
           <h1 className="text-base sm:text-xl font-black bg-gradient-to-r from-yellow-400 to-green-500 bg-clip-text text-transparent whitespace-nowrap">🏆 BOLÃO COPA 2026</h1>
@@ -516,7 +555,7 @@ export default function App() {
         </div>
 
         <nav className="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold overflow-x-auto w-full lg:w-auto whitespace-nowrap scrollbar-none">
-          <button onClick={() => setAbaAtiva('visualizacao')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'visualizacao' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
+          <button onClick={() => { setAbaAtiva('visualizacao'); setAdminFiltroTipo('grupo'); }} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'visualizacao' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
             {isAdmin ? '👁️ Ver Grupos' : '📝 Meus Palpites'}
           </button>
           <button onClick={() => setAbaAtiva('mata-mata')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'mata-mata' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
@@ -540,7 +579,8 @@ export default function App() {
         </div>
       </header>
 
-      {abaAtiva === 'visualizacao' && (
+      {/* 🕒 BARRA DE DIAS UNIFICADA: Renderiza se for visualização comum OU se o Admin estiver filtrando por grupos */}
+      {((abaAtiva === 'visualizacao') || (abaAtiva === 'painel-admin' && adminFiltroTipo === 'grupo')) && (
         <div 
           onWheel={rolarDatasComMouse} 
           className="bg-slate-950 border-b border-slate-800 py-3 sticky top-[108px] lg:top-[57px] z-40 shadow-sm overflow-x-auto sm:scrollbar-thin sm:scrollbar-thumb-slate-700 sm:scrollbar-track-slate-900"
@@ -586,7 +626,7 @@ export default function App() {
             <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 shadow-xl h-fit w-full">
               <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">👤 Competidor Ativo</h3>
               <p className="text-sm font-bold text-yellow-400">{usuarioLogado.nome}</p>
-              <p className="text-[11px] text-slate-400 mt-2">Você está autenticado. Os palpites salvam no seu perfil. Palpites fechados durante os jogos em andamento.</p>
+              <p className="text-[11px] text-slate-400 mt-2">Você está autenticado. Os palpites salvam no seu perfil. Palpites fechados para os jogos em andamento.</p>
             </div>
           </div>
         )}
@@ -636,10 +676,22 @@ export default function App() {
         {abaAtiva === 'painel-admin' && isAdmin && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="w-full lg:col-span-2 space-y-4">
-               <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-slate-400 font-bold">
-                  💡 <b>Painel Admin:</b> Filtre os jogos normais pela barra de dias superior. Para gerenciar os resultados do mata-mata, você pode usar a própria aba de chaveamento ativando o modo de gravação.
+               {/* 💡 NOVO: Filtro rápido de Fases no Painel do Admin para incluir o mata-mata na edição */}
+               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                  <span className="text-[10px] font-black uppercase text-slate-500 w-full mb-1">Navegação Rápida do Admin:</span>
+                  <button onClick={() => setAdminFiltroTipo('grupo')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${adminFiltroTipo === 'grupo' ? 'bg-yellow-500 text-slate-950' : 'bg-slate-900 text-slate-400'}`}>Fase de Grupos</button>
+                  <button onClick={() => setAdminFiltroTipo('16avos')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${adminFiltroTipo === '16avos' ? 'bg-blue-600 text-white' : 'bg-slate-900 text-slate-400'}`}>16 de Final</button>
+                  <button onClick={() => setAdminFiltroTipo('oitavas')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${adminFiltroTipo === 'oitavas' ? 'bg-green-600 text-white' : 'bg-slate-900 text-slate-400'}`}>Oitavas</button>
+                  <button onClick={() => setAdminFiltroTipo('quartas')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${adminFiltroTipo === 'quartas' ? 'bg-purple-600 text-white' : 'bg-slate-900 text-slate-400'}`}>Quartas</button>
+                  <button onClick={() => setAdminFiltroTipo('semi')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${adminFiltroTipo === 'semi' ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-400'}`}>Semi</button>
+                  <button onClick={() => setAdminFiltroTipo('final')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${adminFiltroTipo === 'final' ? 'bg-amber-600 text-white' : 'bg-slate-900 text-slate-400'}`}>Finais</button>
                </div>
-              {jogosFiltrados.map(j => <CardJogoDuplo key={j.id} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)}
+
+              {adminJogosFiltrados.length === 0 ? (
+                <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800 text-slate-400 text-xs font-bold">Nenhum jogo encontrado com o filtro selecionado.</div>
+              ) : (
+                adminJogosFiltrados.map(j => <CardJogoDuplo key={j.id} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)
+              )}
             </div>
             
             <div className="space-y-4 w-full">
@@ -675,6 +727,19 @@ export default function App() {
                   <input type="text" placeholder="Celular (Ex: 12999999999)" value={novoParticipanteCelular} onChange={(e) => setNovoParticipanteCelular(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-200 focus:outline-none" required />
                   <button type="submit" className="w-full bg-green-500 text-slate-950 font-black py-2 rounded-xl text-xs hover:brightness-110 shadow-md transition">Adicionar no Banco</button>
                 </form>
+              </div>
+
+              <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 shadow-xl">
+                <h3 className="text-xs font-black uppercase text-slate-400 mb-2">🔑 Contas e Senhas</h3>
+                <div className="space-y-2 max-h-40 overflow-y-auto text-[11px] font-mono bg-slate-950 p-2 rounded-xl border border-slate-800">
+                  {participantes.map(p => (
+                    <div key={p.id} className="border-b border-slate-900 pb-1 text-slate-300">
+                      <p className="font-bold text-yellow-500">{p.nome}</p>
+                      <p>📱 Tel: {p.celular || 'Sem número'}</p>
+                      <p>🔑 Pass: {p.senha}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -746,6 +811,65 @@ export default function App() {
             ))}
           </div>
         )}
+
+        {/* 🎁 SEÇÃO: Premiação dos Patrocinadores */}
+        <hr className="border-slate-800/80 my-10" />
+        
+        <div className="max-w-4xl mx-auto bg-slate-950/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl mb-6">
+          <div className="text-center mb-6">
+            <span className="text-3xl">🎁</span>
+            <h2 className="text-sm sm:text-base font-black uppercase tracking-wider bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent mt-1">
+              Premiação dos Nossos Patrocinadores
+            </h2>
+            <p className="text-slate-500 text-[11px] font-bold uppercase tracking-widest mt-0.5">Disputa insana pelas melhores posições!</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-center text-center hover:border-slate-700 transition">
+              <span className="text-2xl mb-1">🍟</span>
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-wide">Porção batata do Zé</h4>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">Garantia de resenha com a melhor porção da rodada.</p>
+            </div>
+
+            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-center text-center hover:border-slate-700 transition">
+              <span className="text-2xl mb-1">🍔</span>
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-wide">Lanche do Tonhão</h4>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">Aquele lanche bruto e de respeito para comemorar.</p>
+            </div>
+
+            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-center text-center hover:border-slate-700 transition">
+              <span className="text-2xl mb-1">🍺</span>
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-wide">Brinde da Adega do Negão</h4>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">Para brindar a comemorar com estilo e bebida trincando.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ⚖️ SEÇÃO REFORMULADA: Novos Critérios de Pontuação no Rodapé */}
+        <div className="max-w-4xl mx-auto bg-slate-950/20 border border-slate-800/40 rounded-3xl p-5 sm:p-6 text-slate-400 text-xs shadow-inner">
+          <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest mb-3 flex items-center gap-1.5 justify-center sm:justify-start">
+            <span>⚖️</span> Regras de Pontuação & Desempate
+          </h4>
+          
+          <div className="space-y-3 pl-1 text-slate-300">
+            <div>
+              <span className="text-yellow-500 font-black">🔥 Placar Exato (4 pontos):</span> 
+              <span> Quando você acerta os gols exatos de ambas as equipes (ex: Palpite 2x1, Jogo 2x1).</span>
+            </div>
+            <div>
+              <span className="text-yellow-500 font-black">⚽ Vencedor e Saldo de Gols (2 pontos):</span> 
+              <span> Acertar o vencedor da partida e a diferença exata de gols, mas errando o placar (ex: Palpite 3x1, Jogo 2x0 — ambas vitórias por 2 gols de diferença).</span>
+            </div>
+            <div>
+              <span className="text-yellow-500 font-black">🎯 Apenas o Vencedor ou Empate (1 ponto):</span> 
+              <span> Acertar quem ganha (ou que o jogo termina empatado), mas errando o placar e o saldo de gols.</span>
+            </div>
+          </div>
+
+          <p className="my-3 border-t border-slate-800/60 pt-3 text-slate-500 font-medium">
+            <b>Hierarquia de Desempate:</b> Havendo igualdade na pontuação total da rodada, as posições serão definidas automaticamente seguindo a ordem: 1º Maior número de Placares Exatos (4 pts) ➡️ 2º Maior número de acertos de Vencedor e Saldo (2 pts).
+          </p>
+        </div>
 
       </main>
     </div>
