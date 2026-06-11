@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from './lib/supabase';
 
 // ==========================================
-// SUBCOMPONENTE: CARD DE JOGO DUPLO (TRAVA DE HORÁRIO COMPLETA)
+// SUBCOMPONENTE: CARD DE JOGO DUPLO
 // ==========================================
 function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSalvarPalpite, onSalvarResultadoReal }) {
   const [palpiteCasa, setPalpiteCasa] = useState('');
@@ -40,10 +40,7 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
     setRealFora(jogo.placar_fora ?? '');
   }, [jogo, participanteId]);
 
-  // Trava de horário em tempo real
   const jogoJaComecou = new Date() > new Date(jogo.data_hora);
-
-  // Bloqueia se for leitura, se já salvou palpite ou se o tempo expirou (Admin ignora)
   const inputsTravados = visaoApenasLeitura || (jaTemPalpite && !isAdmin) || (jogoJaComecou && !isAdmin);
 
   return (
@@ -169,7 +166,7 @@ function CardJogoDuplo({ jogo, participanteId, isAdmin, visaoApenasLeitura, onSa
 }
 
 // ==========================================
-// COMPONENTE PRINCIPAL: APP
+// COMPONENTE PRINCIPAL
 // ==========================================
 export default function App() {
   const [usuarioLogado, setUsuarioLogado] = useState(null);
@@ -195,8 +192,9 @@ export default function App() {
   const [inputPin, setInputPin] = useState('');
   const PIN_CORRETO = '1542';
 
-  // Controla se o admin está visualizando um dia da fase de grupos ou uma chave de mata-mata
   const [adminFiltroTipo, setAdminFiltroTipo] = useState('grupo'); 
+
+  const barraDatasRef = useRef(null);
 
   const diasCopa = [
     { data: '2026-06-11', label: 'Qui, 11/06' }, { data: '2026-06-12', label: 'Sex, 12/06' },
@@ -215,6 +213,13 @@ export default function App() {
     if (e.deltaY !== 0) {
       container.scrollLeft += e.deltaY;
       e.preventDefault();
+    }
+  };
+
+  const navegarAbasSetas = (direcao) => {
+    if (barraDatasRef.current) {
+      const deslocamento = direcao === 'esquerda' ? -200 : 200;
+      barraDatasRef.current.scrollBy({ left: deslocamento, behavior: 'smooth' });
     }
   };
 
@@ -259,7 +264,6 @@ export default function App() {
     e.preventDefault();
     setLoadingLogin(true);
     setErroLogin('');
-
     const celularLimpo = loginCelular.replace(/\D/g, '');
 
     try {
@@ -291,7 +295,7 @@ export default function App() {
 
   const lidarSalvarPalpite = async (jogoId, placarCasa, placarFora) => {
     try {
-      const { error } = await supabase.from('palpites').withConverter().upsert({
+      const { error } = await supabase.from('palpites').upsert({
         participante_id: participanteSelecionado,
         jogo_id: jogoId,
         palpite_casa: placarCasa === '' ? null : parseInt(placarCasa),
@@ -312,7 +316,7 @@ export default function App() {
       }).eq('id', jogoId);
 
       if (error) throw error;
-      alert('Placar real atualizado com sucesso!');
+      alert('Placar real updated com sucesso!');
       buscarDados();
     } catch (e) { alert(e.message); }
   };
@@ -320,7 +324,6 @@ export default function App() {
   const cadastrarParticipante = async (e) => {
     e.preventDefault();
     if (!novoParticipanteNome.trim() || !novoParticipanteCelular.trim()) return;
-    
     const celularLimpo = novoParticipanteCelular.replace(/\D/g, '');
     
     try {
@@ -348,7 +351,6 @@ export default function App() {
     }));
   };
 
-  // 💡 ATUALIZADO: Nova regra de pontuação (5, 3, 1) e ordenação automática do ranking
   const calcularRankingPorRodada = () => {
     return participantes.map(p => {
       const chaveInativo = `${rodadaFiltroRanking}-${p.id}`;
@@ -357,9 +359,9 @@ export default function App() {
       }
 
       let pontos = 0;
-      let exatos = 0;      // Placar Exato (5 pts)
-      let saldos = 0;      // Vencedor e Saldo (3 pts)
-      let tendencias = 0;  // Apenas Vencedor/Empate (1 pt)
+      let exatos = 0;      
+      let saldos = 0;      
+      let tendencias = 0;  
 
       const palpitesDaRodada = palpitesTodos.filter(palp => {
         const jogo = jogos.find(j => j.id === palp.jogo_id);
@@ -377,15 +379,12 @@ export default function App() {
             const saldoPalpite = pC - pF;
 
             if (pC === rC && pF === rF) {
-              // 1. Placar Exato
-              pontos += 4;
+              pontos += 5;
               exatos += 1;
             } else if (((rC > rF && pC > pF) || (rC < rF && pC < pF)) && saldoReal === saldoPalpite) {
-              // 2. Vencedor e Saldo de gols (Apenas para vitórias)
-              pontos += 2;
+              pontos += 3;
               saldos += 1;
             } else if ((pC > pF && rC > rF) || (pC < pF && rC < rF) || (pC === pF && rC === rF)) {
-              // 3. Apenas Vencedor ou Empate
               pontos += 1;
               tendencias += 1;
             }
@@ -396,12 +395,8 @@ export default function App() {
     }).sort((a, b) => {
       if (a.pontos === 'Suspenso/Inativo') return 1;
       if (b.pontos === 'Suspenso/Inativo') return -1;
-      
-      // 1º Critério: Pontuação Geral (5, 3, 1)
       if (b.pontos !== a.pontos) return b.pontos - a.pontos;
-      // 2º Critério: Maior número de placares exatos
       if (b.exatos !== a.exatos) return b.exatos - a.exatos;
-      // 3º Critério: Maior número de acertos de saldo
       return b.saldos - a.saldos;
     });
   };
@@ -413,7 +408,7 @@ export default function App() {
 
     jogos.forEach(jogo => {
       const g = jogo.grupo;
-      if (!grupos[g] || !jogo.grupo || jogo.fase === 'oitavas' || jogo.fase === '16avos' || jogo.fase === 'quartas' || jogo.fase === 'semi' || jogo.fase === 'final') return;
+      if (!grupos[g] || !jogo.grupo || ['oitavas','16avos','quartas','semi','final'].includes(jogo.fase)) return;
 
       if (jogo.time_casa && !grupos[g][jogo.time_casa.nome]) {
         grupos[g][jogo.time_casa.nome] = { nome: jogo.time_casa.nome, escudo: jogo.time_casa.url_escudo, pts: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
@@ -465,7 +460,6 @@ export default function App() {
     setLoginSenha('');
   };
 
-  // Filtro adaptativo para a lista do Admin
   const adminJogosFiltrados = jogos.filter(j => {
     if (adminFiltroTipo === 'grupo') {
       if (j.fase && j.fase !== 'grupo') return false;
@@ -483,11 +477,9 @@ export default function App() {
   });
 
   const jogosMataMataFiltrados = jogos.filter(j => j.fase === faseMataMataAtiva);
-
   const rankingFiltrado = calcularRankingPorRodada();
   const tabelasCopa = calcularTabelaGruposCopa();
 
-  // --- RENDEREZAÇÃO DA TELA DE LOGIN ---
   if (!usuarioLogado) {
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 font-sans flex flex-col justify-center items-center px-4">
@@ -579,13 +571,23 @@ export default function App() {
         </div>
       </header>
 
-      {/* 🕒 BARRA DE DIAS UNIFICADA: Renderiza se for visualização comum OU se o Admin estiver filtrando por grupos */}
+      {/* 🕒 BARRA DE DIAS COM SELEÇÃO COM SETAS EM WEB E NATURAL EM MOBILE */}
       {((abaAtiva === 'visualizacao') || (abaAtiva === 'painel-admin' && adminFiltroTipo === 'grupo')) && (
-        <div 
-          onWheel={rolarDatasComMouse} 
-          className="bg-slate-950 border-b border-slate-800 py-3 sticky top-[108px] lg:top-[57px] z-40 shadow-sm overflow-x-auto sm:scrollbar-thin sm:scrollbar-thumb-slate-700 sm:scrollbar-track-slate-900"
-        >
-          <div className="max-w-6xl mx-auto px-4 flex gap-2">
+        <div className="bg-slate-950 border-b border-slate-800 py-3 sticky top-[108px] lg:top-[57px] z-40 shadow-sm relative group">
+          
+          {/* Seta Esquerda (Apenas computadores) */}
+          <button 
+            onClick={() => navegarAbasSetas('esquerda')}
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-slate-900/90 hover:bg-slate-800 text-yellow-500 w-8 h-8 rounded-full border border-slate-700 items-center justify-center shadow-lg transition z-50 hidden md:flex"
+          >
+            ❮
+          </button>
+
+          <div 
+            ref={barraDatasRef}
+            onWheel={rolarDatasComMouse} 
+            className="max-w-6xl mx-auto px-4 md:px-10 flex gap-2 overflow-x-auto scroll-smooth scrollbar-none"
+          >
             {diasCopa.map(d => (
               <button 
                 key={d.data} 
@@ -600,6 +602,14 @@ export default function App() {
               </button>
             ))}
           </div>
+
+          {/* Seta Direita (Apenas computadores) */}
+          <button 
+            onClick={() => navegarAbasSetas('direita')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-slate-900/90 hover:bg-slate-800 text-yellow-500 w-8 h-8 rounded-full border border-slate-700 items-center justify-center shadow-lg transition z-50 hidden md:flex"
+          >
+            ❯
+          </button>
         </div>
       )}
 
@@ -626,7 +636,7 @@ export default function App() {
             <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 shadow-xl h-fit w-full">
               <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">👤 Competidor Ativo</h3>
               <p className="text-sm font-bold text-yellow-400">{usuarioLogado.nome}</p>
-              <p className="text-[11px] text-slate-400 mt-2">Você está autenticado. Os palpites salvam no seu perfil. Palpites fechados para os jogos em andamento.</p>
+              <p className="text-[11px] text-slate-400 mt-2">Você está autenticado. Os palpites salvam no seu perfil.</p>
             </div>
           </div>
         )}
@@ -635,26 +645,26 @@ export default function App() {
           <div className="space-y-6">
             <div className="flex flex-wrap gap-2 justify-center bg-slate-950 p-3 rounded-2xl border border-slate-800">
               <button onClick={() => setFaseMataMataAtiva('16avos')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === '16avos' ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
-                16 de Final 
+                16 de Final
               </button>
               <button onClick={() => setFaseMataMataAtiva('oitavas')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'oitavas' ? 'bg-green-600 border-green-400 text-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
-                Oitavas 
+                Oitavas
               </button>
               <button onClick={() => setFaseMataMataAtiva('quartas')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'quartas' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
-                Quartas 
+                Quartas
               </button>
               <button onClick={() => setFaseMataMataAtiva('semi')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'semi' ? 'bg-red-600 border-red-400 text-white' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
                 Semifinais
               </button>
               <button onClick={() => setFaseMataMataAtiva('final')} className={`px-4 py-2 rounded-xl text-xs font-black border transition ${faseMataMataAtiva === 'final' ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-900 text-slate-400 border-slate-800'}`}>
-                Finais 
+                Finais
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
               {jogosMataMataFiltrados.length === 0 ? (
                 <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800 text-slate-400 text-xs font-bold col-span-2">
-                  Nenhum jogo de mata-mata cadastrado na fase "{faseMataMataAtiva === '16avos' ? '16 de final' : faseMataMataAtiva}" por enquanto.
+                  Nenhum jogo de mata-mata cadastrado na fase selecionada.
                 </div>
               ) : (
                 jogosMataMataFiltrados.map(j => (
@@ -676,9 +686,8 @@ export default function App() {
         {abaAtiva === 'painel-admin' && isAdmin && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="w-full lg:col-span-2 space-y-4">
-               {/* 💡 NOVO: Filtro rápido de Fases no Painel do Admin para incluir o mata-mata na edição */}
                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-wrap gap-1.5 justify-center sm:justify-start">
-                  <span className="text-[10px] font-black uppercase text-slate-500 w-full mb-1">Navegação Rápida do Admin:</span>
+                  <span className="text-[10px] font-black uppercase text-slate-500 w-full mb-1">Filtro Geral Admin:</span>
                   <button onClick={() => setAdminFiltroTipo('grupo')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${adminFiltroTipo === 'grupo' ? 'bg-yellow-500 text-slate-950' : 'bg-slate-900 text-slate-400'}`}>Fase de Grupos</button>
                   <button onClick={() => setAdminFiltroTipo('16avos')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${adminFiltroTipo === '16avos' ? 'bg-blue-600 text-white' : 'bg-slate-900 text-slate-400'}`}>16 de Final</button>
                   <button onClick={() => setAdminFiltroTipo('oitavas')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${adminFiltroTipo === 'oitavas' ? 'bg-green-600 text-white' : 'bg-slate-900 text-slate-400'}`}>Oitavas</button>
@@ -690,7 +699,7 @@ export default function App() {
               {adminJogosFiltrados.length === 0 ? (
                 <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800 text-slate-400 text-xs font-bold">Nenhum jogo encontrado com o filtro selecionado.</div>
               ) : (
-                adminJogosFiltrados.map(j => <CardJogoDuplo key={j.id} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)
+                adminJogosFiltrados.map(j => <CardJogoDuplo key={j.id} juego={j} jogo={j} participanteId={participanteSelecionado} isAdmin={true} visaoApenasLeitura={false} onSalvarPalpite={lidarSalvarPalpite} onSalvarResultadoReal={lidarSalvarResultadoReal} />)
               )}
             </div>
             
@@ -723,8 +732,8 @@ export default function App() {
               <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 shadow-xl">
                 <h3 className="text-xs font-black uppercase text-slate-400 mb-2">➕ Cadastrar Competidor</h3>
                 <form onSubmit={cadastrarParticipante} className="space-y-2">
-                  <input type="text" placeholder="Nome do amigo" value={novoParticipanteNome} onChange={(e) => setNovoParticipanteNome(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-200 focus:outline-none" required />
-                  <input type="text" placeholder="Celular (Ex: 12999999999)" value={novoParticipanteCelular} onChange={(e) => setNovoParticipanteCelular(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-200 focus:outline-none" required />
+                  <input type="text" placeholder="Nome" value={novoParticipanteNome} onChange={(e) => setNovoParticipanteNome(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-200 focus:outline-none" required />
+                  <input type="text" placeholder="Celular" value={novoParticipanteCelular} onChange={(e) => setNovoParticipanteCelular(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-200 focus:outline-none" required />
                   <button type="submit" className="w-full bg-green-500 text-slate-950 font-black py-2 rounded-xl text-xs hover:brightness-110 shadow-md transition">Adicionar no Banco</button>
                 </form>
               </div>
@@ -812,7 +821,7 @@ export default function App() {
           </div>
         )}
 
-        {/* 🎁 SEÇÃO: Premiação dos Patrocinadores */}
+        {/* 🎁 SEÇÃO: Premiação */}
         <hr className="border-slate-800/80 my-10" />
         
         <div className="max-w-4xl mx-auto bg-slate-950/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 shadow-2xl mb-6">
@@ -821,7 +830,7 @@ export default function App() {
             <h2 className="text-sm sm:text-base font-black uppercase tracking-wider bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent mt-1">
               Premiação dos Nossos Patrocinadores
             </h2>
-            <p className="text-slate-500 text-[11px] font-bold uppercase tracking-widest mt-0.5">Disputa insana pelas melhores posições!</p>
+            <p className="text-slate-500 text-[11px] font-bold uppercase tracking-widest mt-0.5">Disputa pelas melhores posições!</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -834,18 +843,18 @@ export default function App() {
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-center text-center hover:border-slate-700 transition">
               <span className="text-2xl mb-1">🍔</span>
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-wide">Lanche do Tonhão</h4>
-              <p className="text-[11px] text-slate-500 font-medium mt-1">Aquele lanche bruto e de respeito para comemorar.</p>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">Aquele lanche bruto e de respeito para o campeão.</p>
             </div>
 
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-center text-center hover:border-slate-700 transition">
               <span className="text-2xl mb-1">🍺</span>
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-wide">Brinde da Adega do Negão</h4>
-              <p className="text-[11px] text-slate-500 font-medium mt-1">Para brindar a comemorar com estilo e bebida trincando.</p>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">Para brindar a liderança com estilo e bebida trincando.</p>
             </div>
           </div>
         </div>
 
-        {/* ⚖️ SEÇÃO REFORMULADA: Novos Critérios de Pontuação no Rodapé */}
+        {/* ⚖️ SEÇÃO: Regras de Pontuação */}
         <div className="max-w-4xl mx-auto bg-slate-950/20 border border-slate-800/40 rounded-3xl p-5 sm:p-6 text-slate-400 text-xs shadow-inner">
           <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest mb-3 flex items-center gap-1.5 justify-center sm:justify-start">
             <span>⚖️</span> Regras de Pontuação & Desempate
@@ -853,21 +862,21 @@ export default function App() {
           
           <div className="space-y-3 pl-1 text-slate-300">
             <div>
-              <span className="text-yellow-500 font-black">🔥 Placar Exato (4 pontos):</span> 
+              <span className="text-yellow-500 font-black">🔥 Placar Exato (5 pontos):</span> 
               <span> Quando você acerta os gols exatos de ambas as equipes (ex: Palpite 2x1, Jogo 2x1).</span>
             </div>
             <div>
-              <span className="text-yellow-500 font-black">⚽ Vencedor e Saldo de Gols (2 pontos):</span> 
-              <span> Acertar o vencedor da partida e a diferença exata de gols, mas errando o placar (ex: Palpite 3x1, Jogo 2x0 — ambas vitórias por 2 gols de diferença).</span>
+              <span className="text-yellow-500 font-black">⚽ Vencedor e Saldo de Gols (3 pontos):</span> 
+              <span> Acertar o vencedor da partida e a diferença exata de gols, mas errando o placar.</span>
             </div>
             <div>
               <span className="text-yellow-500 font-black">🎯 Apenas o Vencedor ou Empate (1 ponto):</span> 
-              <span> Acertar quem ganha (ou que o jogo termina empatado), mas errando o placar e o saldo de gols.</span>
+              <span> Acertar quem ganha (ou empate), mas errando o placar e o saldo de gols.</span>
             </div>
           </div>
 
           <p className="my-3 border-t border-slate-800/60 pt-3 text-slate-500 font-medium">
-            <b>Hierarquia de Desempate:</b> Havendo igualdade na pontuação total da rodada, as posições serão definidas automaticamente seguindo a ordem: 1º Maior número de Placares Exatos (4 pts) ➡️ 2º Maior número de acertos de Vencedor e Saldo (2 pts).
+            <b>Hierarquia de Desempate:</b> Havendo igualdade na pontuação total da rodada, as posições serão definidas automaticamente seguindo a ordem: 1º Placares Exatos (5 pts) ➡️ 2º Acertos de Vencedor e Saldo (3 pts).
           </p>
         </div>
 
