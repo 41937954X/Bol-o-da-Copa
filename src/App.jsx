@@ -972,7 +972,7 @@ export default function App() {
             </div>
 
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-center text-center hover:border-slate-700 transition">
-              <span className="text-2xl mb-1">🍺</span>
+              <span className="text-2xl mb-1">🍹</span>
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-wide">Brinde da Adega do Negão</h4>
               <p className="text-[11px] text-slate-500 font-medium mt-1">Para brindar a vitória com style e bebida trincando.</p>
             </div>
