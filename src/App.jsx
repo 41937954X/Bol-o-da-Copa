@@ -241,24 +241,38 @@ export default function App() {
 
   const buscarDados = async () => {
     try {
-      const resJogos = await supabase.from('jogos').select(`
-        id, data_hora, grupo, placar_casa, placar_fora, status, rodada, fase, numero_jogo,
-        time_casa:selecao_casa_id (nome, url_escudo),
-        time_fora:selecao_fora_id (nome, url_escudo)
-      `).order('data_hora', { ascending: true });
+      // 1. Jogos com Join
+      const { data: j, error: errJ } = await supabase
+        .from('jogos')
+        .select('*, time_casa:selecao_casa_id(nome, url_escudo), time_fora:selecao_fora_id(nome, url_escudo)')
+        .order('id', { ascending: true });
 
-      const resParticipantes = await supabase.from('participantes').select('*').order('nome');
-      const resPalpites = await supabase.from('palpites').select('*');
+      // 2. Participantes
+      const { data: p, error: errP } = await supabase
+        .from('participantes')
+        .select('*')
+        .order('nome');
 
-      if (resJogos.error) throw resJogos.error;
-      if (resParticipantes.error) throw resParticipantes.error;
-      if (resPalpites.error) throw resPalpites.error;
+      // 3. Busca de palpites FORÇADA (sem paginação oculta)
+      // O range(0, 5000) força o Supabase a ignorar o limite padrão de 1000
+      const { data: pal, error: errPal } = await supabase
+        .from('palpites')
+        .select('*')
+        .range(0, 5000) 
+        .order('id', { ascending: false }); // Traz os palpites do mata-mata primeiro
 
-      setJogos(resJogos.data || []);
-      setParticipantes(resParticipantes.data || []);
-      setPalpitesTodos(resPalpites.data || []);
+      if (errJ) console.error("Erro Jogos:", errJ);
+      if (errP) console.error("Erro Participantes:", errP);
+      if (errPal) console.error("Erro Palpites:", errPal);
+
+      console.log("Total de palpites carregados:", pal ? pal.length : 0);
+      console.log("Amostra do primeiro palpite:", pal ? pal[0] : "vazio");
+
+      setJogos(j || []);
+      setParticipantes(p || []);
+      setPalpitesTodos(pal || []);
     } catch (e) {
-      console.error(e.message);
+      console.error("Erro fatal ao buscar dados:", e.message);
     }
   };
 
@@ -383,55 +397,65 @@ export default function App() {
     }));
   };
 
-  const calcularRankingPorRodada = () => {
-    return (participantes || []).map(p => {
-      const chaveInativo = `${rodadaFiltroRanking}-${p.id}`;
-      if (participantesInativosPorRodada[chaveInativo]) {
-        return { ...p, pontos: 'Suspenso/Inativo', exatos: 0, saldos: 0, tendencias: 0 };
+  // Mantenha o nome que o seu código já chama no return
+const calcularRankingPorRodada = () => {
+  // Se rodadaFiltroRanking for "16avos", "oitavas", etc, tratamos como faseMataMata
+  const isMataMata = ['16avos', 'oitavas', 'quartas', 'semi', 'final'].includes(rodadaFiltroRanking);
+  
+  return (participantes || []).map(p => {
+    // Verifica inatividade
+    const chaveInativo = `${rodadaFiltroRanking}-${p.id}`;
+    if (participantesInativosPorRodada[chaveInativo]) {
+      return { ...p, pontos: 'Suspenso/Inativo', exatos: 0, saldos: 0, tendencias: 0 };
+    }
+
+    let pontos = 0; let exatos = 0; let saldos = 0; let tendencias = 0;
+
+    const palpitesDoParticipante = (palpitesTodos || []).filter(palp => 
+      String(palp.participante_id) === String(p.id)
+    );
+
+    palpitesDoParticipante.forEach(palpite => {
+      const jogoReal = (jogos || []).find(j => String(j.id) === String(palpite.jogo_id));
+      if (!jogoReal) return;
+
+      // Define se o jogo pertence à fase atual
+      let jogoPertenceASelecao = false;
+      if (isMataMata) {
+        if (rodadaFiltroRanking === '16avos') jogoPertenceASelecao = jogoReal.id >= 73 && jogoReal.id <= 88;
+        else if (rodadaFiltroRanking === 'oitavas') jogoPertenceASelecao = jogoReal.id >= 89 && jogoReal.id <= 96;
+        else if (rodadaFiltroRanking === 'quartas') jogoPertenceASelecao = jogoReal.id >= 97 && jogoReal.id <= 100;
+        else if (rodadaFiltroRanking === 'semi') jogoPertenceASelecao = jogoReal.id === 101 || jogoReal.id === 102;
+        else if (rodadaFiltroRanking === 'final') jogoPertenceASelecao = jogoReal.id === 103 || jogoReal.id === 104;
+      } else {
+        // Lógica de Grupos
+        jogoPertenceASelecao = jogoReal.id < 73 && jogoReal.rodada === parseInt(rodadaFiltroRanking);
       }
 
-      let pontos = 0;
-      let exatos = 0;      
-      let saldos = 0;      
-      let tendencias = 0;  
+      if (jogoPertenceASelecao && jogoReal.placar_casa !== null && jogoReal.placar_fora !== null) {
+        const rC = jogoReal.placar_casa; const rF = jogoReal.placar_fora;
+        const pC = palpite.palpite_casa; const pF = palpite.palpite_fora;
 
-      const palpitesDaRodada = (palpitesTodos || []).filter(palp => {
-        const jogo = (jogos || []).find(j => j.id === palp.jogo_id);
-        return p && palp.participante_id === p.id && jogo && jogo.rodada === parseInt(rodadaFiltroRanking);
-      });
+        if (pC !== null && pF !== null) {
+          const saldoReal = rC - rF;
+          const saldoPalpite = pC - pF;
 
-      palpitesDaRodada.forEach(palpite => {
-        const jogoReal = (jogos || []).find(j => j.id === palpite.jogo_id);
-        if (jogoReal && jogoReal.placar_casa !== null && jogoReal.placar_fora !== null) {
-          const rC = jogoReal.placar_casa; const rF = jogoReal.placar_fora;
-          const pC = palpite.palpite_casa; const pF = palpite.palpite_fora;
-
-          if (pC !== null && pF !== null) {
-            const saldoReal = rC - rF;
-            const saldoPalpite = pC - pF;
-
-            if (pC === rC && pF === rF) {
-              pontos += 4;
-              exatos += 1;
-            } else if (((rC > rF && pC > pF) || (rC < rF && pC < pF)) && saldoReal === saldoPalpite) {
-              pontos += 2;
-              saldos += 1;
-            } else if ((pC > pF && rC > rF) || (pC < pF && rC < rF) || (pC === pF && rC === rF)) {
-              pontos += 1;
-              tendencias += 1;
-            }
-          }
+          if (pC === rC && pF === rF) { pontos += 4; exatos += 1; }
+          else if (((rC > rF && pC > pF) || (rC < rF && pC < pF)) && saldoReal === saldoPalpite) { pontos += 2; saldos += 1; }
+          else if ((pC > pF && rC > rF) || (pC < pF && rC < rF) || (pC === pF && rC === rF)) { pontos += 1; tendencias += 1; }
         }
-      });
-      return { ...p, pontos, exatos, saldos, tendencias };
-    }).sort((a, b) => {
-      if (a.pontos === 'Suspenso/Inativo') return 1;
-      if (b.pontos === 'Suspenso/Inativo') return -1;
-      if (b.pontos !== a.pontos) return b.pontos - a.pontos;
-      if (b.exatos !== a.exatos) return b.exatos - a.exatos;
-      return b.saldos - a.saldos;
+      }
     });
-  };
+
+    return { ...p, pontos, exatos, saldos, tendencias };
+  }).sort((a, b) => {
+    if (a.pontos === 'Suspenso/Inativo') return 1;
+    if (b.pontos === 'Suspenso/Inativo') return -1;
+    if (b.pontos !== a.pontos) return b.pontos - a.pontos;
+    if (b.exatos !== a.exatos) return b.exatos - a.exatos;
+    return b.saldos - a.saldos;
+  });
+};
 
   const calcularTabelaGruposCopa = () => {
     const grupos = {};
@@ -589,14 +613,14 @@ export default function App() {
 
         <nav className="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold overflow-x-auto w-full lg:w-auto whitespace-nowrap scrollbar-none">
           <button onClick={() => { setAbaAtiva('visualizacao'); setAdminFiltroTipo('grupo'); }} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'visualizacao' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
-             📝 Meus Palpites
+             📝 Palpites Fase de Grupos
+          </button>
+          <button onClick={() => setAbaAtiva('mata-mata')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'mata-mata' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
+            🌳 Palpites Mata-Mata
           </button>
           <button onClick={() => setAbaAtiva('palpites-publicos')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'palpites-publicos' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
              👥 Palpites da Galera
-          </button>
-          <button onClick={() => setAbaAtiva('mata-mata')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'mata-mata' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>
-            🌳 Chaveamento Mata-Mata
-          </button>
+          </button>          
           {isAdmin && <button onClick={() => setAbaAtiva('painel-admin')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'painel-admin' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>⚙️ Painel Geral</button>}
           <button onClick={() => setAbaAtiva('ranking')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'ranking' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>📊 Ranking Rodada</button>
           <button onClick={() => setAbaAtiva('grupos-copa')} className={`px-3 py-1.5 rounded-lg transition ${abaAtiva === 'grupos-copa' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400'}`}>🏆 Grupos da Copa</button>
@@ -747,7 +771,7 @@ export default function App() {
                           {(participantes || []).map(p => {
                             {/* 💡 SOLUCIONADO EM ESCALA ABSOLUTA: Varredura limpa e sem colisão de escopos */}
                             const palpiteReal = (palpitesTodos || []).find(palp => 
-                              palp && palp.jogo_id === j.id && p && palp.participante_id === p.id
+                              palp && String(palp.jogo_id) === String(j.id) && p && String(palp.participante_id) === String(p.id)
                             );
                             return (
                               <tr key={p.id} className="hover:bg-slate-900/30 transition">
@@ -880,33 +904,58 @@ export default function App() {
         )}
 
         {abaAtiva === 'ranking' && (
-          <div className="max-w-2xl mx-auto space-y-4 w-full">
-            <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center bg-slate-950 border border-slate-800 p-4 rounded-xl shadow">
-              <h2 className="text-xs sm:text-sm font-black uppercase text-slate-300">📊 Filtrar Tabela:</h2>
-              <div className="flex gap-1.5 w-full sm:w-auto overflow-x-auto scrollbar-none">
+          <div className="max-w-2xl mx-auto space-y-4 w-full px-2">
+            {/* Cabeçalho do Filtro */}
+            <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl shadow">
+              <h2 className="text-xs font-black uppercase text-slate-400 mb-3 tracking-widest">📊 Filtrar Tabela por Fase:</h2>
+      
+              {/* Container de scroll para comportar todas as opções */}
+              <div className="flex gap-2 w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                {/* Rodadas Grupos */}
                 {[1, 2, 3].map(r => (
-                  <button key={r} onClick={() => setRodadaFiltroRanking(r)} className={`px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap ${rodadaFiltroRanking === r ? 'bg-yellow-500 text-slate-950' : 'bg-slate-900 border border-slate-800 text-slate-400'}`}>Rodada {r}</button>
+                  <button 
+                    key={r} 
+                    onClick={() => setRodadaFiltroRanking(String(r))} 
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition whitespace-nowrap ${rodadaFiltroRanking === String(r) ? 'bg-yellow-500 text-slate-950' : 'bg-slate-900 border border-slate-800 text-slate-400'}`}
+                  >
+                    Rodada {r}
+                  </button>
+                ))}
+        
+                {/* Divisor visual */}
+                <div className="w-px bg-slate-800 mx-1"></div>
+
+                {/* Fases Mata-Mata */}
+                {['16avos', 'oitavas', 'quartas', 'semi', 'final'].map(fase => (
+                  <button 
+                    key={fase} 
+                    onClick={() => setRodadaFiltroRanking(fase)} 
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition capitalize whitespace-nowrap ${rodadaFiltroRanking === fase ? 'bg-green-500 text-slate-950' : 'bg-slate-900 border border-slate-800 text-slate-400'}`}
+                  >
+                    {fase}
+                  </button>
                 ))}
               </div>
             </div>
 
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-x-auto shadow-2xl w-full">
-              <table className="w-full text-left min-w-[480px]">
+            {/* Tabela de Ranking */}
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl w-full">
+              <table className="w-full text-left">
                 <thead>
-                  <tr className="bg-slate-900 text-slate-400 text-xs font-black uppercase tracking-wider border-b border-slate-800">
-                    <th className="py-4 px-4 sm:px-6 text-center w-16">Pos</th>
-                    <th className="py-4 px-4 sm:px-6">Participante</th>
-                    <th className="py-4 px-4 sm:px-6 text-center w-36">Pontos Obtidos</th>
+                  <tr className="bg-slate-900 text-slate-400 text-[10px] font-black uppercase tracking-wider border-b border-slate-800">
+                    <th className="py-4 px-4 text-center w-16">Pos</th>
+                    <th className="py-4 px-4">Participante</th>
+                    <th className="py-4 px-4 text-center">Pontos</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-900 text-xs sm:text-sm font-bold">
+                <tbody className="divide-y divide-slate-900 text-xs font-bold">
                   {rankingFiltrado.map((p, idx) => (
-                    <tr key={p.id} className={`hover:bg-slate-900/30 transition ${usuarioLogado?.id === p.id ? 'bg-yellow-500/5' : ''}`}>
-                      <td className="py-4 px-4 sm:px-6 text-center">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`}</td>
-                      <td className="py-4 px-4 sm:px-6 text-slate-200">{p.nome} {usuarioLogado?.id === p.id && '(Você) ⭐'}</td>
-                      <td className="py-4 px-4 sm:px-6 text-center">
-                        <span className={`px-2.5 py-1 rounded-lg border text-[11px] sm:text-xs ${p.pontos === 'Suspenso/Inativo' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
-                          {typeof p.pontos === 'number' ? `${p.pontos} pts` : p.pontos}
+                    <tr key={p.id} className={`hover:bg-slate-900/50 transition ${usuarioLogado?.id === p.id ? 'bg-yellow-500/10' : ''}`}>
+                      <td className="py-4 px-4 text-center text-sm">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`}</td>
+                      <td className="py-4 px-4 text-slate-200">{p.nome} {usuarioLogado?.id === p.id && '⭐'}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className={`px-2.5 py-1 rounded-md border text-[11px] ${p.pontos === 'Suspenso/Inativo' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                          {p.pontos} pts
                         </span>
                       </td>
                     </tr>
